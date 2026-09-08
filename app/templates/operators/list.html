@@ -1,0 +1,129 @@
+{% extends "base.html" %} {% import "partials/forms.html" as f %} {% block title
+%}Operadores{% endblock %} {% block heading %}Operadores{% endblock %} {% block
+subheading %}
+<p class="text-xs text-slate-500">{{ operators | length }} cadastrado(s)</p>
+{% endblock %} {% block content %}
+
+{% macro client_select(clients, selected="") %}
+<div>
+  <label class="mb-1 block text-sm font-medium text-slate-700">Vínculo (cliente)</label>
+  <select name="client_id" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20">
+    <option value="">— Equipe interna —</option>
+    {% for c in clients %}
+    <option value="{{ c.id }}" {{ "selected" if c.id|string == selected|string }}>{{ c.code }} — {{ c.name }}</option>
+    {% endfor %}
+  </select>
+</div>
+{% endmacro %}
+
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <form method="get" class="flex gap-2">
+    <input name="q" value="{{ q }}" placeholder="Buscar por nome, usuário ou e-mail"
+      class="w-72 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20" />
+    <button class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">Buscar</button>
+  </form>
+  {% if user.is_superuser %}
+  <button data-open-modal="modal-new" class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">+ Novo operador</button>
+  {% endif %}
+</div>
+
+<div class="overflow-x-auto rounded-2xl border border-slate-100 bg-white">
+  <table class="min-w-full divide-y divide-slate-100 text-sm">
+    <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+      <tr>
+        <th class="px-5 py-3">Operador</th>
+        <th class="px-5 py-3">Vínculo</th>
+        <th class="px-5 py-3">Acesso</th>
+        <th class="px-5 py-3">Último login</th>
+        <th class="px-5 py-3">Status</th>
+        <th class="px-5 py-3"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for o in operators %}
+      <tr class="hover:bg-slate-50">
+        <td class="px-5 py-3">
+          <div class="font-medium text-slate-700">{{ o.full_name }}</div>
+          <div class="text-xs text-slate-400">{{ o.username }} · {{ o.email }}</div>
+        </td>
+        <td class="px-5 py-3 text-slate-600">
+          {{ o.client.code if o.client else "Interno" }}
+        </td>
+        <td class="px-5 py-3">
+          <div class="flex flex-wrap gap-1">
+            {% if o.is_superuser %}<span class="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">Admin</span>{% endif %}
+            {% if o.govbr_sub %}<span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">gov.br</span>{% endif %}
+            {% if o.account_level %}<span class="rounded-full bg-cyan-100 px-2 py-0.5 text-xs font-medium text-cyan-700">Login Único N{{ o.account_level }}</span>{% endif %}
+            {% if o.has_password %}<span class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">senha</span>{% endif %}
+          </div>
+          {% if o.cpf %}<div class="mt-0.5 font-mono text-[11px] text-slate-400">CPF {{ o.cpf }}</div>{% endif %}
+        </td>
+        <td class="px-5 py-3 text-slate-500">
+          {{ o.last_login_at.strftime("%d/%m/%Y %H:%M") if o.last_login_at else "—" }}
+        </td>
+        <td class="px-5 py-3">
+          {% if o.is_active %}
+          <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">Ativo</span>
+          {% else %}
+          <span class="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">Pendente</span>
+          {% endif %}
+        </td>
+        <td class="px-5 py-3 text-right">
+          <a href="/operadores/{{ o.id }}/permissoes" class="text-xs font-medium text-cyan-600 hover:underline">Permissões</a>
+          {% if user.is_superuser %}
+          <button data-open-modal="edit-{{ o.id }}" class="ml-3 text-xs font-medium text-cyan-600 hover:underline">Editar</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="px-5 py-10 text-center text-slate-400">Nenhum operador.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if user.is_superuser %}
+<div id="modal-new" class="modal-overlay fixed inset-0 z-40 hidden items-center justify-center p-4">
+  <div class="w-full max-w-lg rounded-2xl border border-slate-100 bg-white p-6">
+    <h3 class="text-lg font-semibold text-slate-800">Novo operador</h3>
+    <form method="post" action="/operadores" class="mt-4 grid gap-3 sm:grid-cols-2">
+      {{ f.field("full_name", "Nome completo", required=True, span=True) }}
+      {{ f.field("username", "Usuário", required=True) }}
+      {{ f.field("email", "E-mail", required=True, type="email") }}
+      {{ f.field("password", "Senha (deixe vazio p/ só gov.br)", type="password", span=True) }}
+      {{ client_select(clients) }}
+      <div class="flex items-end gap-4">
+        {{ f.checkbox("is_superuser", "Administrador") }}
+        {{ f.checkbox("is_active", "Ativo", checked=True) }}
+      </div>
+      <div class="sm:col-span-2 mt-2 flex justify-end gap-2">
+        <button type="button" data-close-modal="modal-new" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600">Cancelar</button>
+        <button class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% for o in operators %}
+<div id="edit-{{ o.id }}" class="modal-overlay fixed inset-0 z-40 hidden items-center justify-center p-4">
+  <div class="w-full max-w-lg rounded-2xl border border-slate-100 bg-white p-6">
+    <h3 class="text-lg font-semibold text-slate-800">Editar — {{ o.username }}</h3>
+    <form method="post" action="/operadores/{{ o.id }}/editar" class="mt-4 grid gap-3 sm:grid-cols-2">
+      {{ f.field("full_name", "Nome completo", value=o.full_name, required=True, span=True) }}
+      {{ f.field("email", "E-mail", value=o.email, required=True, type="email") }}
+      {{ f.field("password", "Nova senha (opcional)", type="password") }}
+      {{ client_select(clients, o.client_id or "") }}
+      <div class="flex items-end gap-4">
+        {{ f.checkbox("is_superuser", "Administrador", checked=o.is_superuser) }}
+        {{ f.checkbox("is_active", "Ativo", checked=o.is_active) }}
+      </div>
+      <div class="sm:col-span-2 mt-2 flex justify-end gap-2">
+        <button type="button" data-close-modal="edit-{{ o.id }}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600">Cancelar</button>
+        <button class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

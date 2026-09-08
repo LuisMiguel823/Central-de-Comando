@@ -1,0 +1,6 @@
+# Normaliza para LF no repositório (o app roda em Linux/Docker)
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.pem binary

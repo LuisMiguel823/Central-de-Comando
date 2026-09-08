@@ -1,0 +1,11 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.git/
+.env
+keys/
+mysql-data/
+.pytest_cache/
+tests/
+*.md

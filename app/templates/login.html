@@ -1,0 +1,118 @@
+{% extends "base.html" %} {% block title %}Entrar{% endblock %} {% block body %}
+<div class="grid min-h-screen lg:grid-cols-2">
+  <!-- Lateral com a identidade visual (mesma cor nos dois temas) -->
+  <div class="sidebar relative hidden flex-col justify-between p-12 lg:flex" style="width: 100%">
+    <div class="flex items-center gap-3">
+      <div class="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white">
+        <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2 4 6v6c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6l-8-4Z" />
+        </svg>
+      </div>
+      <span class="sidebar-title text-lg font-semibold">{{ app_name }}</span>
+    </div>
+    <div class="space-y-4">
+      <h2 class="text-3xl font-bold text-white">Login único e permissões, num lugar só.</h2>
+      <p class="max-w-md text-sm text-slate-300">
+        O APP CENTRAL autentica os operadores, controla o que cada um pode fazer em cada
+        aplicação e registra tudo — entrou, saiu, quem mudou permissão.
+      </p>
+    </div>
+    <p class="sidebar-section text-xs font-semibold uppercase">APP Central · v{{ app_version }}</p>
+  </div>
+
+  <!-- Formulário -->
+  <div class="flex items-center justify-center bg-slate-50 p-6">
+    <div class="w-full max-w-sm">
+      <div class="mb-8 lg:hidden">
+        <span class="text-lg font-semibold text-slate-800">{{ app_name }}</span>
+      </div>
+      <h1 class="text-2xl font-bold text-slate-800">Entrar</h1>
+      <p class="mt-1 text-sm text-slate-500">Acesse o painel do APP CENTRAL.</p>
+
+      {% if error %}
+      <div class="mt-4 rounded-lg border border-red-200 bg-red-100 px-4 py-3 text-sm text-red-700">
+        {{ error }}
+      </div>
+      {% endif %}
+
+      <form method="post" action="/login" class="mt-6 space-y-4">
+        <input type="hidden" name="next" value="{{ next }}" />
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Usuário ou e-mail</label>
+          <input
+            name="identifier"
+            required
+            autofocus
+            autocomplete="username"
+            class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+            placeholder="admin"
+          />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Senha</label>
+          <input
+            type="password"
+            name="password"
+            required
+            autocomplete="current-password"
+            class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+            placeholder="••••••••"
+          />
+        </div>
+        <button
+          type="submit"
+          class="btn-primary w-full rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm"
+        >
+          Entrar
+        </button>
+      </form>
+
+      {% if govbr_configured or loginunico_configured or microsoft_configured %}
+      <div class="my-5 flex items-center gap-3 text-xs text-slate-400">
+        <span class="h-px flex-1 bg-slate-200"></span>ou<span class="h-px flex-1 bg-slate-200"></span>
+      </div>
+      {% endif %}
+
+      {% if microsoft_configured %}
+      <a
+        href="/auth/microsoft/login?next={{ next | urlencode }}"
+        class="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+      >
+        <span class="grid h-4 w-4 grid-cols-2 gap-px">
+          <span class="bg-[#f25022]"></span><span class="bg-[#7fba00]"></span>
+          <span class="bg-[#00a4ef]"></span><span class="bg-[#ffb900]"></span>
+        </span>
+        Entrar com Microsoft
+      </a>
+      {% endif %}
+
+      {% if govbr_configured %}
+      <a
+        href="/auth/govbr/login?next={{ next | urlencode }}"
+        class="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+      >
+        <span class="grid h-5 w-5 place-items-center rounded bg-blue-600 text-[10px] font-bold text-white">g</span>
+        Entrar com gov.br
+      </a>
+      {% endif %}
+
+      {% if loginunico_configured %}
+      <a
+        href="/auth/loginunico/login?next={{ next | urlencode }}"
+        class="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+      >
+        <span class="grid h-5 w-5 place-items-center rounded bg-gradient-to-r from-cyan-600 to-blue-600 text-[10px] font-bold text-white">LU</span>
+        Entrar com Login Único
+      </a>
+      {% endif %}
+
+      <button
+        onclick="toggleTheme()"
+        class="mt-8 text-xs text-slate-400 hover:text-slate-600"
+      >
+        <span data-theme-label>Tema escuro</span>
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}

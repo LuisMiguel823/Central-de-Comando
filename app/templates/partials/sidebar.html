@@ -1,0 +1,105 @@
+{% set path = current_path %}
+<aside class="sidebar fixed inset-y-0 left-0 z-30 flex flex-col">
+  <div class="flex items-center gap-2.5 px-5 py-5">
+    <div
+      class="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white"
+    >
+      <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2 4 6v6c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6l-8-4Z" />
+      </svg>
+    </div>
+    <div class="leading-tight">
+      <div class="sidebar-title text-sm font-semibold">{{ app_name }}</div>
+      <div class="sidebar-section text-[10px] font-semibold uppercase">APP Central</div>
+    </div>
+  </div>
+
+  <nav class="flex-1 space-y-6 overflow-y-auto px-3 pb-6">
+    <div>
+      <p class="sidebar-section px-3 pb-2 text-[11px] font-semibold uppercase">Painel</p>
+      <a
+        href="/"
+        class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium {{ 'is-active-primary' if path == '/' }}"
+      >
+        <svg class="sidebar-ico h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 13h8V3H3v10Zm10 8h8V11h-8v10ZM3 21h8v-6H3v6Zm10-18v6h8V3h-8Z" />
+        </svg>
+        Dashboard
+      </a>
+    </div>
+
+    <div>
+      <p class="sidebar-section px-3 pb-2 text-[11px] font-semibold uppercase">Cadastros</p>
+      <a
+        href="/clientes"
+        class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium {{ 'is-active' if path.startswith('/clientes') }}"
+      >
+        <svg class="sidebar-ico h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 21h18M6 21V7l6-4 6 4v14M10 9h4M10 13h4M10 17h4" />
+        </svg>
+        Clientes
+      </a>
+      <a
+        href="/operadores"
+        class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium {{ 'is-active' if path.startswith('/operadores') }}"
+      >
+        <svg class="sidebar-ico h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        Operadores
+      </a>
+      <a
+        href="/apps"
+        class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium {{ 'is-active' if path.startswith('/apps') }}"
+      >
+        <svg class="sidebar-ico h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3h8v8H3V3Zm10 0h8v8h-8V3ZM3 13h8v8H3v-8Zm10 0h8v8h-8v-8Z" />
+        </svg>
+        Aplicações
+      </a>
+    </div>
+
+    <div>
+      <p class="sidebar-section px-3 pb-2 text-[11px] font-semibold uppercase">Governança</p>
+      <a
+        href="/auditoria"
+        class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium {{ 'is-active' if path.startswith('/auditoria') }}"
+      >
+        <svg class="sidebar-ico h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z" />
+          <path d="M14 2v6h6M9 13l2 2 4-4" />
+        </svg>
+        Auditoria
+      </a>
+    </div>
+
+    <div>
+      <p class="sidebar-section px-3 pb-2 text-[11px] font-semibold uppercase">Ferramentas</p>
+      <a
+        href="/docs"
+        target="_blank"
+        class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"
+      >
+        <svg class="sidebar-ico h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
+        </svg>
+        API (Swagger)
+      </a>
+      <a
+        href="/.well-known/openid-configuration"
+        target="_blank"
+        class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"
+      >
+        <svg class="sidebar-ico h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 3a15 15 0 0 1 0 18M3 12h18" />
+        </svg>
+        Discovery OIDC
+      </a>
+    </div>
+  </nav>
+
+  <div class="border-t border-cyan-700/40 px-5 py-3 text-[11px] text-slate-300/80">
+    v{{ app_version }} · {{ "gov.br ON" if govbr_enabled else "gov.br OFF" }}
+  </div>
+</aside>

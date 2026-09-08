@@ -1,0 +1,146 @@
+{% extends "base.html" %} {% import "partials/forms.html" as f %} {% block title
+%}Aplicações{% endblock %} {% block heading %}Aplicações{% endblock %} {% block
+subheading %}
+<p class="text-xs text-slate-500">Apps satélite que usam o APP CENTRAL para login e permissões</p>
+{% endblock %} {% block content %}
+
+{% macro client_select(clients, selected="") %}
+<div>
+  <label class="mb-1 block text-sm font-medium text-slate-700">Cliente dono (opcional)</label>
+  <select name="client_id" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20">
+    <option value="">— Global —</option>
+    {% for c in clients %}
+    <option value="{{ c.id }}" {{ "selected" if c.id|string == selected|string }}>{{ c.code }} — {{ c.name }}</option>
+    {% endfor %}
+  </select>
+</div>
+{% endmacro %}
+
+{% if new_secret %}
+<div class="mb-4 rounded-xl border border-amber-200 bg-amber-100 p-4 text-sm text-amber-700">
+  <p class="font-semibold">Guarde o segredo do app "{{ new_secret.slug }}" — ele não será mostrado de novo:</p>
+  <div class="mt-2 grid gap-1 font-mono text-xs">
+    <div>client_id: <span class="select-all">{{ new_secret.client_id }}</span></div>
+    <div>client_secret: <span class="select-all">{{ new_secret.client_secret }}</span></div>
+  </div>
+</div>
+{% endif %}
+
+<div class="mb-4 flex justify-end">
+  {% if user.is_superuser %}
+  <button data-open-modal="modal-new" class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">+ Nova aplicação</button>
+  {% endif %}
+</div>
+
+<div class="grid gap-4 lg:grid-cols-2">
+  {% for app in apps %}
+  <div class="rounded-2xl border border-slate-100 bg-white">
+    <div class="flex items-start justify-between border-b border-slate-100 px-5 py-4">
+      <div>
+        <div class="flex items-center gap-2">
+          <h2 class="text-sm font-semibold text-slate-800">{{ app.name }}</h2>
+          {% if app.is_active %}
+          <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">ativo</span>
+          {% else %}
+          <span class="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600">inativo</span>
+          {% endif %}
+        </div>
+        <p class="text-xs text-slate-400">
+          {{ app.slug }} · {{ app.client.code if app.client else "global" }}
+        </p>
+      </div>
+      {% if user.is_superuser %}
+      <div class="flex gap-2 text-xs">
+        <button data-open-modal="edit-{{ app.id }}" class="font-medium text-cyan-600 hover:underline">Editar</button>
+        <form method="post" action="/apps/{{ app.id }}/rotacionar-segredo" onsubmit="return confirm('Rotacionar o client_secret deste app?')">
+          <button class="font-medium text-orange-600 hover:underline">Rotacionar segredo</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="space-y-1 px-5 py-3 font-mono text-xs text-slate-500">
+      <div>client_id: {{ app.oauth_client_id }}</div>
+      <div>redirect_uris:</div>
+      <ul class="ml-3 list-disc">
+        {% for u in app.redirect_uri_list %}<li>{{ u }}</li>{% else %}<li class="list-none text-slate-400">nenhum</li>{% endfor %}
+      </ul>
+      <div>scopes: {{ app.allowed_scopes }}</div>
+      {% if app.base_url %}<div>base_url: {{ app.base_url }}</div>{% endif %}
+    </div>
+
+    <div class="border-t border-slate-100 px-5 py-3">
+      <div class="mb-2 flex items-center justify-between">
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Permissões ({{ app.permissions | length }})</h3>
+      </div>
+      <ul class="space-y-1">
+        {% for p in app.permissions %}
+        <li class="flex items-center justify-between rounded-md bg-slate-50 px-2 py-1 text-xs">
+          <span><span class="font-mono text-slate-600">{{ p.code }}</span> — {{ p.name }}</span>
+          {% if user.is_superuser %}
+          <form method="post" action="/apps/{{ app.id }}/permissoes/{{ p.id }}/remover">
+            <button class="text-red-600 hover:underline">remover</button>
+          </form>
+          {% endif %}
+        </li>
+        {% else %}
+        <li class="text-xs text-slate-400">Nenhuma permissão cadastrada.</li>
+        {% endfor %}
+      </ul>
+      {% if user.is_superuser %}
+      <form method="post" action="/apps/{{ app.id }}/permissoes" class="mt-3 grid grid-cols-2 gap-2">
+        <input name="code" required placeholder="clientes.editar" class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-cyan-500" />
+        <input name="name" required placeholder="Editar clientes" class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-cyan-500" />
+        <input name="description" placeholder="Descrição (opcional)" class="col-span-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-cyan-500" />
+        <button class="col-span-2 rounded-lg border border-cyan-200 bg-cyan-100 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:brightness-105">+ Adicionar permissão</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <p class="text-sm text-slate-400">Nenhuma aplicação cadastrada.</p>
+  {% endfor %}
+</div>
+
+{% if user.is_superuser %}
+<div id="modal-new" class="modal-overlay fixed inset-0 z-40 hidden items-center justify-center p-4">
+  <div class="w-full max-w-lg rounded-2xl border border-slate-100 bg-white p-6">
+    <h3 class="text-lg font-semibold text-slate-800">Nova aplicação</h3>
+    <form method="post" action="/apps" class="mt-4 grid gap-3 sm:grid-cols-2">
+      {{ f.field("name", "Nome", required=True) }}
+      {{ f.field("slug", "Slug (ex.: app-1)", required=True) }}
+      {{ f.field("base_url", "URL base", span=True, placeholder="https://app1.exemplo.gov.br") }}
+      {{ f.textarea_field("redirect_uris", "Redirect URIs (uma por linha)", placeholder="https://app1.exemplo.gov.br/auth/callback") }}
+      {{ f.field("allowed_scopes", "Scopes", value="openid profile email", span=True) }}
+      {{ client_select(clients) }}
+      {{ f.textarea_field("description", "Descrição", rows=2) }}
+      <div class="sm:col-span-2 mt-2 flex justify-end gap-2">
+        <button type="button" data-close-modal="modal-new" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600">Cancelar</button>
+        <button class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">Criar app</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% for app in apps %}
+<div id="edit-{{ app.id }}" class="modal-overlay fixed inset-0 z-40 hidden items-center justify-center p-4">
+  <div class="w-full max-w-lg rounded-2xl border border-slate-100 bg-white p-6">
+    <h3 class="text-lg font-semibold text-slate-800">Editar — {{ app.slug }}</h3>
+    <form method="post" action="/apps/{{ app.id }}/editar" class="mt-4 grid gap-3 sm:grid-cols-2">
+      {{ f.field("name", "Nome", value=app.name, required=True, span=True) }}
+      {{ f.field("base_url", "URL base", value=app.base_url or "", span=True) }}
+      {{ f.textarea_field("redirect_uris", "Redirect URIs (uma por linha)", value=app.redirect_uris) }}
+      {{ f.field("allowed_scopes", "Scopes", value=app.allowed_scopes, span=True) }}
+      {{ client_select(clients, app.client_id or "") }}
+      {{ f.textarea_field("description", "Descrição", value=app.description or "", rows=2) }}
+      <div class="sm:col-span-2">{{ f.checkbox("is_active", "Aplicação ativa", checked=app.is_active) }}</div>
+      <div class="sm:col-span-2 mt-2 flex justify-end gap-2">
+        <button type="button" data-close-modal="edit-{{ app.id }}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600">Cancelar</button>
+        <button class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

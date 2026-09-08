@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}{{ app_name }}{% endblock %} · {{ app_name }}</title>
+
+    <!-- anti-FOUC: aplica o tema antes de pintar -->
+    <script>
+      (function () {
+        try {
+          var s = localStorage.getItem("cc-theme");
+          var dark =
+            s === "dark" ||
+            (!s &&
+              window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) document.documentElement.classList.add("dark");
+        } catch (e) {}
+      })();
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = { darkMode: "class" };
+    </script>
+    <link rel="stylesheet" href="/static/css/app.css" />
+    <link rel="stylesheet" href="/static/css/dark-mode.css" />
+  </head>
+
+  <body class="bg-slate-50 text-slate-700 antialiased">
+    {% block body %}
+    <div class="flex min-h-screen">
+      {% include "partials/sidebar.html" %}
+
+      <div class="flex-1 flex flex-col min-w-0" style="margin-left: var(--sidebar-w)">
+        <header
+          class="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-slate-200 bg-white/90 px-6 py-3 backdrop-blur"
+        >
+          <div class="min-w-0">
+            <h1 class="truncate text-lg font-semibold text-slate-800">
+              {% block heading %}{% endblock %}
+            </h1>
+            {% block subheading %}{% endblock %}
+          </div>
+          <div class="flex items-center gap-3">
+            <button
+              onclick="toggleTheme()"
+              class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            >
+              <span data-theme-label>Tema escuro</span>
+            </button>
+            {% if user %}
+            <div class="flex items-center gap-2">
+              <div
+                class="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 text-xs font-bold text-white"
+              >
+                {{ (user.full_name or user.username)[:2] | upper }}
+              </div>
+              <div class="hidden sm:block leading-tight">
+                <div class="text-sm font-medium text-slate-700">{{ user.full_name }}</div>
+                <div class="text-xs text-slate-500">
+                  {{ "Administrador" if user.is_superuser else "Operador" }}
+                </div>
+              </div>
+              <a
+                href="/logout"
+                class="ml-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                >Sair</a
+              >
+            </div>
+            {% endif %}
+          </div>
+        </header>
+
+        <main class="flex-1 px-6 py-6">
+          {% if request.query_params.get("error") %}
+          <div
+            class="mb-4 rounded-lg border border-red-200 bg-red-100 px-4 py-3 text-sm text-red-700"
+          >
+            {{ request.query_params.get("error") }}
+          </div>
+          {% endif %} {% block content %}{% endblock %}
+        </main>
+      </div>
+    </div>
+    {% endblock %}
+
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/app.js"></script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

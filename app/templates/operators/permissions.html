@@ -1,0 +1,58 @@
+{% extends "base.html" %} {% block title %}Permissões · {{ target.username
+}}{% endblock %} {% block heading %}Permissões — {{ target.full_name }}{% endblock
+%} {% block subheading %}
+<p class="text-xs text-slate-500">
+  {{ target.username }} · {{ target.client.code if target.client else "Equipe interna" }}
+</p>
+{% endblock %} {% block content %}
+
+<div class="mb-4">
+  <a href="/operadores" class="text-sm text-cyan-600 hover:underline">&larr; Voltar para operadores</a>
+</div>
+
+{% if target.is_superuser %}
+<div class="mb-4 rounded-lg border border-violet-200 bg-violet-100 px-4 py-3 text-sm text-violet-700">
+  Este operador é <strong>Administrador</strong> — tem todas as permissões de todos os apps,
+  independentemente das marcações abaixo.
+</div>
+{% endif %}
+
+<form method="post" action="/operadores/{{ target.id }}/permissoes" class="space-y-4">
+  {% for app in apps %}
+  <div class="rounded-2xl border border-slate-100 bg-white">
+    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+      <div>
+        <h2 class="text-sm font-semibold text-slate-700">{{ app.name }}</h2>
+        <p class="text-xs text-slate-400">{{ app.slug }}</p>
+      </div>
+      <span class="rounded-full bg-cyan-100 px-2 py-0.5 text-xs font-medium text-cyan-700">
+        {{ app.permissions | length }} permissões
+      </span>
+    </div>
+    {% if app.permissions %}
+    <div class="grid gap-2 p-5 sm:grid-cols-2">
+      {% for p in app.permissions %}
+      <label class="flex items-start gap-2 rounded-lg border border-slate-100 px-3 py-2 text-sm hover:bg-slate-50">
+        <input type="checkbox" name="permission_id" value="{{ p.id }}" class="mt-0.5"
+          {{ "checked" if p.id in granted }} />
+        <span>
+          <span class="font-medium text-slate-700">{{ p.name }}</span>
+          <span class="block font-mono text-xs text-slate-400">{{ p.code }}</span>
+          {% if p.description %}<span class="block text-xs text-slate-500">{{ p.description }}</span>{% endif %}
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="px-5 py-4 text-sm text-slate-400">Este app ainda não tem permissões cadastradas.</p>
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="text-sm text-slate-400">Nenhuma aplicação cadastrada.</p>
+  {% endfor %}
+
+  <div class="sticky bottom-0 flex justify-end gap-2 border-t border-slate-200 bg-white/90 py-3 backdrop-blur">
+    <button class="btn-primary rounded-lg px-5 py-2 text-sm font-semibold">Salvar permissões</button>
+  </div>
+</form>
+{% endblock %}

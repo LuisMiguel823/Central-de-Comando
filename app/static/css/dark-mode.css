@@ -1,0 +1,198 @@
+/* ================================================================== *
+ *  dark-mode.css
+ *  Intercepta as MESMAS classes Tailwind quando <html> tem .dark.
+ *  Só muda as superfícies "claras" do conteúdo (escurecem) e os
+ *  textos escuros (clareiam). A lateral (.sidebar) NÃO é tocada aqui
+ *  de propósito — ela tem cor própria e igual nos dois temas.
+ *  Botões com gradiente vivo (cyan->blue) também NÃO mudam.
+ * ================================================================== */
+
+html.dark body {
+  background-color: #0f172a; /* slate-900 */
+  color: #e2e8f0; /* slate-200 */
+}
+
+/* ---- Fundo da página / superfícies ---- */
+html.dark .bg-slate-50 {
+  background-color: #0f172a;
+}
+html.dark .bg-slate-100 {
+  background-color: #1e293b;
+}
+html.dark .bg-white {
+  background-color: #1e293b; /* slate-800 */
+}
+/* variantes translúcidas (cabeçalho sticky, barra de ações com backdrop-blur) */
+html.dark .bg-white\/95 {
+  background-color: rgba(30, 41, 59, 0.95);
+}
+html.dark .bg-white\/90 {
+  background-color: rgba(30, 41, 59, 0.9);
+}
+html.dark .bg-white\/80 {
+  background-color: rgba(30, 41, 59, 0.8);
+}
+html.dark .bg-white\/70 {
+  background-color: rgba(30, 41, 59, 0.7);
+}
+html.dark .bg-slate-800\/5,
+html.dark .bg-slate-900\/5 {
+  background-color: rgba(148, 163, 184, 0.08);
+}
+
+/* ---- Textos escuros -> clareiam ---- */
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+html.dark .text-slate-700,
+html.dark .text-slate-600 {
+  color: #cbd5e1; /* slate-300 */
+}
+html.dark .text-slate-500 {
+  color: #94a3b8;
+}
+html.dark .text-slate-400 {
+  color: #64748b;
+}
+
+/* ---- Bordas claras -> slate-700 ---- */
+html.dark .border-slate-100,
+html.dark .border-slate-200,
+html.dark .border-slate-300 {
+  border-color: #334155;
+}
+html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #334155;
+}
+html.dark .ring-slate-200 {
+  --tw-ring-color: #334155;
+}
+
+/* ---- Hover de linhas / superfícies suaves ---- */
+html.dark .hover\:bg-slate-50:hover,
+html.dark .hover\:bg-slate-100:hover {
+  background-color: #263449;
+}
+
+/* ================================================================== *
+ *  Badges / tints: versão escura dessaturada da MESMA cor,
+ *  com o texto clareado pra manter contraste.
+ * ================================================================== */
+
+/* cyan (cor de destaque) */
+html.dark .bg-cyan-100 {
+  background-color: #113a47;
+}
+html.dark .text-cyan-700 {
+  color: #67e8f9;
+}
+html.dark .text-cyan-600 {
+  color: #22d3ee;
+}
+html.dark .border-cyan-200 {
+  border-color: #155e75;
+}
+
+/* emerald (concluídos) */
+html.dark .bg-emerald-100 {
+  background-color: #0c3a2e;
+}
+html.dark .text-emerald-700,
+html.dark .text-emerald-600 {
+  color: #6ee7b7;
+}
+
+/* amber */
+html.dark .bg-amber-100 {
+  background-color: #43320c;
+}
+html.dark .text-amber-700,
+html.dark .text-amber-600 {
+  color: #fcd34d;
+}
+
+/* yellow (plano Ouro) */
+html.dark .bg-yellow-100 {
+  background-color: #453a09;
+}
+html.dark .text-yellow-700,
+html.dark .text-yellow-600 {
+  color: #fde047;
+}
+
+/* orange (pendentes) */
+html.dark .bg-orange-100 {
+  background-color: #43280f;
+}
+html.dark .text-orange-700,
+html.dark .text-orange-600 {
+  color: #fdba74;
+}
+
+/* red (atrasados / falhas) */
+html.dark .bg-red-100 {
+  background-color: #45161a;
+}
+html.dark .text-red-700,
+html.dark .text-red-600 {
+  color: #fca5a5;
+}
+
+/* violet / purple */
+html.dark .bg-violet-100,
+html.dark .bg-purple-100 {
+  background-color: #33244d;
+}
+html.dark .text-violet-700,
+html.dark .text-violet-600,
+html.dark .text-purple-700,
+html.dark .text-purple-600 {
+  color: #c4b5fd;
+}
+
+/* teal */
+html.dark .bg-teal-100 {
+  background-color: #103b3a;
+}
+html.dark .text-teal-700,
+html.dark .text-teal-600 {
+  color: #5eead4;
+}
+
+/* blue */
+html.dark .bg-blue-100 {
+  background-color: #17294d;
+}
+html.dark .text-blue-700,
+html.dark .text-blue-600 {
+  color: #93c5fd;
+}
+
+/* slate badge */
+html.dark .bg-slate-200 {
+  background-color: #334155;
+}
+
+/* ---- Inputs ---- */
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b;
+}
+html.dark .placeholder\:text-slate-400::placeholder {
+  color: #64748b;
+}
+
+/* ---- Modal ---- */
+html.dark .modal-overlay {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+/* Cores vivas com gradiente (btn-primary / from-cyan-600 to-blue-600):
+   deliberadamente SEM regra aqui — ficam iguais nos dois temas. */
