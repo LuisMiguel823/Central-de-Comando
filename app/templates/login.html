@@ -3,11 +3,7 @@
   <!-- Lateral com a identidade visual (mesma cor nos dois temas) -->
   <div class="sidebar relative hidden flex-col justify-between p-12 lg:flex" style="width: 100%">
     <div class="flex items-center gap-3">
-      <div class="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white">
-        <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 2 4 6v6c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6l-8-4Z" />
-        </svg>
-      </div>
+      <img src="/static/img/logo-npi.png" alt="{{ app_name }}" class="h-11 w-11 shrink-0" />
       <span class="sidebar-title text-lg font-semibold">{{ app_name }}</span>
     </div>
     <div class="space-y-4">
@@ -23,7 +19,8 @@
   <!-- Formulário -->
   <div class="flex items-center justify-center bg-slate-50 p-6">
     <div class="w-full max-w-sm">
-      <div class="mb-8 lg:hidden">
+      <div class="mb-8 flex items-center gap-2.5 lg:hidden">
+        <img src="/static/img/logo-npi.png" alt="{{ app_name }}" class="h-9 w-9" />
         <span class="text-lg font-semibold text-slate-800">{{ app_name }}</span>
       </div>
       <h1 class="text-2xl font-bold text-slate-800">Entrar</h1>

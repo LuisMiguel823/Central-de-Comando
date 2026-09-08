@@ -1,13 +1,7 @@
 {% set path = current_path %}
 <aside class="sidebar fixed inset-y-0 left-0 z-30 flex flex-col">
   <div class="flex items-center gap-2.5 px-5 py-5">
-    <div
-      class="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white"
-    >
-      <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 2 4 6v6c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6l-8-4Z" />
-      </svg>
-    </div>
+    <img src="/static/img/logo-npi.png" alt="{{ app_name }}" class="h-9 w-9 shrink-0" />
     <div class="leading-tight">
       <div class="sidebar-title text-sm font-semibold">{{ app_name }}</div>
       <div class="sidebar-section text-[10px] font-semibold uppercase">APP Central</div>

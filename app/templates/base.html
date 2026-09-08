@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}{{ app_name }}{% endblock %} · {{ app_name }}</title>
 
+    <link rel="icon" href="/static/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/img/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/img/favicon-16.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/img/favicon-192.png" />
+    <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png" />
+
     <!-- anti-FOUC: aplica o tema antes de pintar -->
     <script>
       (function () {
