@@ -1,0 +1,252 @@
+{% extends "base.html" %} {% block title %}Sobre o sistema{% endblock %} {% block
+heading %}Sobre o sistema{% endblock %} {% block subheading %}
+<p class="text-xs text-slate-500">O que o APP CENTRAL já faz, e como</p>
+{% endblock %} {% block content %}
+
+<div class="mx-auto max-w-4xl space-y-8 pb-10">
+
+  <!-- 1. A ideia -->
+  <section class="rounded-2xl border border-slate-100 bg-white p-6">
+    <h2 class="text-base font-semibold text-slate-800">A ideia em uma frase</h2>
+    <p class="mt-2 text-sm leading-relaxed text-slate-600">
+      Em vez de cada sistema (Protocolo, Portal do Cidadão, Contratos…) ter o próprio
+      login e a própria lista de permissões, existe <strong class="text-slate-700">um único lugar</strong>
+      — o <strong class="text-slate-700">APP CENTRAL</strong> — que autentica o operador,
+      decide o que ele pode fazer em cada aplicação, e registra tudo o que acontece.
+      É a versão em funcionamento do quadro branco: <em>Login · Permissão · Log</em> no meio,
+      Clientes/Operadores/Apps ao lado, APP 1/2/3 recebendo o que sai dali.
+    </p>
+  </section>
+
+  <!-- 2. Diagrama de arquitetura -->
+  <section class="rounded-2xl border border-slate-100 bg-white p-6">
+    <h2 class="text-base font-semibold text-slate-800">Como as peças se conectam</h2>
+    <figure class="mt-4">
+      <div class="overflow-x-auto text-slate-700">
+        <svg viewBox="0 0 860 462" role="img" aria-label="Três provedores de identidade autenticam no APP CENTRAL, que gerencia clientes, operadores e aplicações, e emite tokens OIDC para os apps satélite, que por sua vez validam esses tokens de volta no APP CENTRAL." style="min-width:720px" class="w-full">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="currentColor" />
+            </marker>
+          </defs>
+
+          <!-- provedores de identidade -->
+          <g font-size="12.5">
+            <rect x="20" y="18" width="190" height="52" rx="10" fill="none" stroke="currentColor" opacity="0.55" />
+            <text x="115" y="40" text-anchor="middle" font-weight="600">gov.br</text>
+            <text x="115" y="57" text-anchor="middle" opacity="0.65" font-size="10.5">OIDC</text>
+
+            <rect x="335" y="18" width="190" height="52" rx="10" fill="none" stroke="currentColor" opacity="0.55" />
+            <text x="430" y="40" text-anchor="middle" font-weight="600">Login Único</text>
+            <text x="430" y="57" text-anchor="middle" opacity="0.65" font-size="10.5">Neomind Fusion (municipal)</text>
+
+            <rect x="650" y="18" width="190" height="52" rx="10" fill="none" stroke="currentColor" opacity="0.55" />
+            <text x="745" y="40" text-anchor="middle" font-weight="600">Microsoft</text>
+            <text x="745" y="57" text-anchor="middle" opacity="0.65" font-size="10.5">Entra ID</text>
+          </g>
+
+          <!-- setas convergindo para o APP CENTRAL -->
+          <g stroke="currentColor" fill="none" opacity="0.8" marker-end="url(#arrow)">
+            <line x1="115" y1="70" x2="400" y2="132" />
+            <line x1="430" y1="70" x2="430" y2="132" />
+            <line x1="745" y1="70" x2="460" y2="132" />
+          </g>
+          <text x="430" y="102" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">autentica</text>
+
+          <!-- APP CENTRAL -->
+          <rect x="230" y="134" width="400" height="120" rx="14" fill="none" stroke="currentColor" stroke-width="1.6" />
+          <text x="430" y="164" text-anchor="middle" font-size="15" font-weight="700">APP CENTRAL</text>
+          <text x="430" y="183" text-anchor="middle" font-size="11" opacity="0.7">login único · permissões · auditoria</text>
+          <g font-size="10.5">
+            <rect x="252" y="196" width="98" height="24" rx="6" fill="none" stroke="currentColor" opacity="0.5" />
+            <text x="301" y="212" text-anchor="middle">Clientes</text>
+            <rect x="361" y="196" width="98" height="24" rx="6" fill="none" stroke="currentColor" opacity="0.5" />
+            <text x="410" y="212" text-anchor="middle">Operadores</text>
+            <rect x="470" y="196" width="98" height="24" rx="6" fill="none" stroke="currentColor" opacity="0.5" />
+            <text x="519" y="212" text-anchor="middle">Aplicações</text>
+          </g>
+
+          <!-- setas para apps satelite -->
+          <g stroke="currentColor" fill="none" opacity="0.8" marker-end="url(#arrow)">
+            <line x1="330" y1="254" x2="130" y2="354" />
+            <line x1="430" y1="254" x2="430" y2="354" />
+            <line x1="530" y1="254" x2="730" y2="354" />
+          </g>
+          <text x="500" y="292" text-anchor="middle" font-size="11" opacity="0.7">emite token OIDC assinado</text>
+          <text x="500" y="307" text-anchor="middle" font-size="11" opacity="0.7">(id_token + permissões do app)</text>
+
+          <!-- volta: validacao -->
+          <line x1="490" y1="354" x2="470" y2="256" stroke="currentColor" stroke-dasharray="4 4" opacity="0.6" marker-end="url(#arrow)" />
+          <text x="600" y="340" text-anchor="middle" font-size="10.5" opacity="0.6">valida token de volta —</text>
+          <text x="600" y="353" text-anchor="middle" font-size="10.5" opacity="0.6">GET /userinfo · POST /introspect</text>
+
+          <!-- apps satelite -->
+          <g font-size="12.5">
+            <rect x="35" y="356" width="190" height="52" rx="10" fill="none" stroke="currentColor" />
+            <text x="130" y="378" text-anchor="middle" font-weight="600">APP 1</text>
+            <text x="130" y="395" text-anchor="middle" opacity="0.65" font-size="10.5">Protocolo Digital</text>
+
+            <rect x="335" y="356" width="190" height="52" rx="10" fill="none" stroke="currentColor" />
+            <text x="430" y="378" text-anchor="middle" font-weight="600">APP 2 · www</text>
+            <text x="430" y="395" text-anchor="middle" opacity="0.65" font-size="10.5">Portal do Cidadão</text>
+
+            <rect x="635" y="356" width="190" height="52" rx="10" fill="none" stroke="currentColor" />
+            <text x="730" y="378" text-anchor="middle" font-weight="600">APP 3</text>
+            <text x="730" y="395" text-anchor="middle" opacity="0.65" font-size="10.5">Gestão de Contratos</text>
+          </g>
+
+          <text x="430" y="443" text-anchor="middle" font-size="11" opacity="0.55">
+            cada app satélite é um "client" OAuth com client_id/secret e permissões próprias
+          </text>
+        </svg>
+      </div>
+      <figcaption class="mt-2 text-xs text-slate-500">
+        Três formas de provar quem é o operador entram pelo topo; o APP CENTRAL é o único lugar
+        que guarda clientes/operadores/apps; os apps satélite embaixo só recebem um token — e
+        confirmam sua validade de volta, em vez de manter login próprio.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- 3. O que já existe -->
+  <section class="rounded-2xl border border-slate-100 bg-white p-6">
+    <h2 class="text-base font-semibold text-slate-800">O que já está funcionando</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div>
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-cyan-700">Identidade e acesso</h3>
+        <ul class="mt-2 space-y-1.5 text-sm text-slate-600">
+          <li>✓ Login por usuário e senha (bcrypt), sessão em cookie assinado</li>
+          <li>✓ APP CENTRAL funciona como provedor OIDC: <code class="rounded bg-slate-100 px-1 py-0.5 text-xs">/oauth/authorize</code>, <code class="rounded bg-slate-100 px-1 py-0.5 text-xs">/token</code>, <code class="rounded bg-slate-100 px-1 py-0.5 text-xs">/userinfo</code>, <code class="rounded bg-slate-100 px-1 py-0.5 text-xs">/jwks.json</code></li>
+          <li>✓ Suporte a PKCE e renovação por refresh_token</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-cyan-700">Cadastros</h3>
+        <ul class="mt-2 space-y-1.5 text-sm text-slate-600">
+          <li>✓ Clientes (câmaras), com plano Bronze/Prata/Ouro/Diamante</li>
+          <li>✓ Operadores, vinculados ou não a um cliente</li>
+          <li>✓ Aplicações satélite, cada uma com seu client_id/secret OAuth</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-cyan-700">Permissões</h3>
+        <ul class="mt-2 space-y-1.5 text-sm text-slate-600">
+          <li>✓ Catálogo de permissões por aplicação (ex.: <code class="rounded bg-slate-100 px-1 py-0.5 text-xs">contratos.assinar</code>)</li>
+          <li>✓ Concessão individual por operador; administrador herda todas</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-cyan-700">Auditoria</h3>
+        <ul class="mt-2 space-y-1.5 text-sm text-slate-600">
+          <li>✓ Todo login, falha de login e mudança de permissão vira um evento</li>
+          <li>✓ Cada evento guarda quem, quando, IP e o que mudou</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Como funciona o login -->
+  <section class="rounded-2xl border border-slate-100 bg-white p-6">
+    <h2 class="text-base font-semibold text-slate-800">Como funciona o login por federação</h2>
+    <p class="mt-2 text-sm text-slate-600">
+      Os três provedores (gov.br, Login Único, Microsoft) seguem o mesmo esqueleto — muda só
+      o que acontece quando o e-mail/CPF que volta não bate com ninguém cadastrado:
+    </p>
+    <figure class="mt-4">
+      <div class="overflow-x-auto text-slate-700">
+        <svg viewBox="0 0 900 300" role="img" aria-label="O operador clica em entrar com o provedor, o APP CENTRAL redireciona para lá, o provedor devolve um código, o APP CENTRAL troca por dados do usuário e verifica se já existe um operador com aquele e-mail ou CPF: se existir, cria a sessão; se não existir, o Microsoft sempre nega o acesso enquanto gov.br e Login Único podem criar um operador pendente, dependendo da configuração." style="min-width:760px" class="w-full">
+          <defs>
+            <marker id="arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="currentColor" />
+            </marker>
+          </defs>
+          <g font-size="12" stroke="currentColor" fill="none">
+            <rect x="10" y="90" width="130" height="46" rx="9" opacity="0.7" />
+            <rect x="190" y="90" width="150" height="46" rx="9" opacity="0.7" />
+            <rect x="390" y="90" width="150" height="46" rx="9" opacity="0.7" />
+            <polygon points="640,68 730,113 640,158 550,113" opacity="0.7" />
+          </g>
+          <g font-size="12" text-anchor="middle" fill="currentColor">
+            <text x="75" y="117">Operador</text>
+            <text x="265" y="112">/auth/&lt;provedor&gt;</text>
+            <text x="265" y="127">/login (gera state)</text>
+            <text x="465" y="112">Provedor externo</text>
+            <text x="465" y="127">(o login acontece lá)</text>
+            <text x="640" y="110">já existe</text>
+            <text x="640" y="124">operador com</text>
+            <text x="640" y="138">esse e-mail/CPF?</text>
+          </g>
+          <g stroke="currentColor" fill="none" opacity="0.85" marker-end="url(#arrow2)">
+            <line x1="140" y1="113" x2="188" y2="113" />
+            <line x1="340" y1="113" x2="388" y2="113" />
+            <line x1="540" y1="113" x2="600" y2="113" />
+          </g>
+          <text x="360" y="100" text-anchor="middle" font-size="10.5" opacity="0.6">redireciona</text>
+          <text x="565" y="100" text-anchor="middle" font-size="10.5" opacity="0.6">code + e-mail/CPF</text>
+
+          <!-- ramo SIM -->
+          <line x1="700" y1="130" x2="700" y2="200" stroke="currentColor" opacity="0.85" marker-end="url(#arrow2)" />
+          <text x="712" y="168" font-size="11" opacity="0.7">sim</text>
+          <rect x="600" y="202" width="200" height="46" rx="9" stroke="currentColor" fill="none" />
+          <text x="700" y="222" text-anchor="middle" font-size="12" font-weight="600">Sessão criada</text>
+          <text x="700" y="237" text-anchor="middle" font-size="10.5" opacity="0.65">auditoria: auth.login</text>
+
+          <!-- ramo NAO -->
+          <line x1="580" y1="113" x2="480" y2="113" stroke="currentColor" opacity="0" />
+          <path d="M 550 113 Q 430 113 430 200" stroke="currentColor" fill="none" opacity="0.85" marker-end="url(#arrow2)" />
+          <text x="470" y="168" font-size="11" opacity="0.7">não</text>
+
+          <rect x="120" y="202" width="220" height="58" rx="9" stroke="currentColor" fill="none" stroke-dasharray="3 3" />
+          <text x="230" y="222" text-anchor="middle" font-size="11.5" font-weight="600">gov.br / Login Único</text>
+          <text x="230" y="238" text-anchor="middle" font-size="10.5" opacity="0.7">cria operador pendente,</text>
+          <text x="230" y="251" text-anchor="middle" font-size="10.5" opacity="0.7">se AUTO_PROVISION=true</text>
+
+          <rect x="380" y="202" width="200" height="58" rx="9" stroke="currentColor" fill="none" />
+          <text x="480" y="222" text-anchor="middle" font-size="11.5" font-weight="600">Microsoft</text>
+          <text x="480" y="238" text-anchor="middle" font-size="10.5" opacity="0.7">nunca cria — nega e</text>
+          <text x="480" y="251" text-anchor="middle" font-size="10.5" opacity="0.7">volta ao login com erro</text>
+
+          <path d="M 430 200 Q 340 200 230 200" stroke="currentColor" fill="none" opacity="0.85" marker-end="url(#arrow2)" />
+          <path d="M 430 200 Q 460 200 480 200" stroke="currentColor" fill="none" opacity="0.85" marker-end="url(#arrow2)" />
+        </svg>
+      </div>
+      <figcaption class="mt-2 text-xs text-slate-500">
+        A única regra que muda entre provedores: Microsoft só autentica quem <strong>já está
+        cadastrado</strong> (casa por e-mail e para — nunca cria usuário); gov.br e Login Único
+        podem criar um operador novo automaticamente, mas ele entra <em>pendente</em> até um
+        administrador liberar.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- 5. Status de cada federação -->
+  <section class="rounded-2xl border border-slate-100 bg-white p-6">
+    <h2 class="text-base font-semibold text-slate-800">Status de cada federação agora</h2>
+    <div class="mt-4 space-y-3">
+      {% for f in federations %}
+      <div class="flex flex-col gap-1 rounded-xl border border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-semibold text-slate-700">{{ f.name }}</span>
+            <span class="rounded-full bg-{{ f.tone }}-100 px-2 py-0.5 text-[11px] font-medium text-{{ f.tone }}-700">{{ f.status }}</span>
+          </div>
+          <p class="text-xs text-slate-400">{{ f.kind }}</p>
+        </div>
+        <p class="max-w-md text-xs text-slate-500 sm:text-right">{{ f.detail }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- 6. Rodape -->
+  <section class="rounded-2xl border border-slate-100 bg-white p-6">
+    <h2 class="text-base font-semibold text-slate-800">Onde ver mais</h2>
+    <ul class="mt-2 space-y-1.5 text-sm text-slate-600">
+      <li>• <a href="/docs" target="_blank" class="text-cyan-600 hover:underline">/docs</a> — todas as rotas da API, testáveis direto no navegador</li>
+      <li>• <a href="/.well-known/openid-configuration" target="_blank" class="text-cyan-600 hover:underline">/.well-known/openid-configuration</a> — o que o APP CENTRAL anuncia como provedor OIDC</li>
+      <li>• <a href="/auditoria" class="text-cyan-600 hover:underline">Auditoria</a> — histórico real de tudo que já aconteceu</li>
+    </ul>
+  </section>
+
+</div>
+{% endblock %}

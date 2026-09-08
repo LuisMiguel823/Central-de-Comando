@@ -26,7 +26,7 @@ def test_dashboard_after_login(admin_client):
 
 
 def test_crud_pages_load(admin_client):
-    for path in ("/clientes", "/operadores", "/apps", "/auditoria"):
+    for path in ("/clientes", "/operadores", "/apps", "/auditoria", "/sobre"):
         assert admin_client.get(path).status_code == 200
 
 

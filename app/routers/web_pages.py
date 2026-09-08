@@ -37,6 +37,41 @@ def _back(request: Request, fallback: str) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# Sobre — explicação didática do que o sistema já faz
+# --------------------------------------------------------------------------- #
+@router.get("/sobre")
+def about_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_web_user),
+):
+    federations = [
+        {
+            "name": "gov.br",
+            "kind": "OIDC padrão (Authorization Code)",
+            "status": "aguardando credencial",
+            "tone": "amber",
+            "detail": "Falta client_id/secret do gov.br e o redirect homologado.",
+        },
+        {
+            "name": "Login Único municipal",
+            "kind": "Neomind Fusion — WSAuthInit / WSAuthVerify",
+            "status": "ligado (Cabo Frio)",
+            "tone": "emerald",
+            "detail": "Passo 1 já responde no servidor real; falta a prefeitura liberar o redirect de callback.",
+        },
+        {
+            "name": "Microsoft (Entra ID)",
+            "kind": "OAuth2 Authorization Code, sem lib",
+            "status": "aguardando App Registration",
+            "tone": "amber",
+            "detail": "Falta criar o App Registration no Azure e preencher client_id/secret/tenant.",
+        },
+    ]
+    return render(request, "about.html", {"user": user, "federations": federations})
+
+
+# --------------------------------------------------------------------------- #
 # Dashboard
 # --------------------------------------------------------------------------- #
 @router.get("/")

@@ -70,6 +70,16 @@
     <div>
       <p class="sidebar-section px-3 pb-2 text-[11px] font-semibold uppercase">Ferramentas</p>
       <a
+        href="/sobre"
+        class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium {{ 'is-active' if path.startswith('/sobre') }}"
+      >
+        <svg class="sidebar-ico h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 11v5M12 8h.01" />
+        </svg>
+        Sobre o sistema
+      </a>
+      <a
         href="/docs"
         target="_blank"
         class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium"
