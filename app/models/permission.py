@@ -33,6 +33,11 @@ class Permission(TimestampMixin, Base):
         back_populates="permission", cascade="all, delete-orphan"
     )
 
+    @property
+    def category(self) -> str:
+        """Prefixo antes do primeiro ponto do code (ex.: 'clientes.editar' -> 'clientes'), usado só pra agrupar visualmente na tela de permissões."""
+        return self.code.split(".", 1)[0]
+
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Permission {self.code}>"
 

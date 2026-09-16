@@ -26,12 +26,33 @@
       })();
     </script>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      tailwind.config = { darkMode: "class" };
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Poppins", "ui-sans-serif", "system-ui", "sans-serif"],
+            },
+          },
+        },
+      };
     </script>
     <link rel="stylesheet" href="/static/css/app.css" />
     <link rel="stylesheet" href="/static/css/dark-mode.css" />
+    <style>
+      body {
+        font-family: "Poppins", ui-sans-serif, system-ui, sans-serif;
+      }
+    </style>
   </head>
 
   <body class="bg-slate-50 text-slate-700 antialiased">
@@ -66,7 +87,7 @@
               <div class="hidden sm:block leading-tight">
                 <div class="text-sm font-medium text-slate-700">{{ user.full_name }}</div>
                 <div class="text-xs text-slate-500">
-                  {{ "Administrador" if user.is_superuser else "Operador" }}
+                  {{ "Administrador" if user.is_superuser else "Usuário" }}
                 </div>
               </div>
               <a

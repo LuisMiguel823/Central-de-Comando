@@ -7,12 +7,12 @@
 {% endblock %} {% block content %}
 
 <div class="mb-4">
-  <a href="/operadores" class="text-sm text-cyan-600 hover:underline">&larr; Voltar para operadores</a>
+  <a href="/operadores" class="text-sm text-cyan-600 hover:underline">&larr; Voltar para usuários</a>
 </div>
 
 {% if target.is_superuser %}
 <div class="mb-4 rounded-lg border border-violet-200 bg-violet-100 px-4 py-3 text-sm text-violet-700">
-  Este operador é <strong>Administrador</strong> — tem todas as permissões de todos os apps,
+  Este usuário é <strong>Administrador</strong> — tem todas as permissões de todos os sistemas,
   independentemente das marcações abaixo.
 </div>
 {% endif %}

@@ -1,5 +1,5 @@
 {% extends "base.html" %} {% import "partials/forms.html" as f %} {% block title
-%}Operadores{% endblock %} {% block heading %}Operadores{% endblock %} {% block
+%}Usuários{% endblock %} {% block heading %}Usuários{% endblock %} {% block
 subheading %}
 <p class="text-xs text-slate-500">{{ operators | length }} cadastrado(s)</p>
 {% endblock %} {% block content %}
@@ -23,7 +23,7 @@ subheading %}
     <button class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">Buscar</button>
   </form>
   {% if user.is_superuser %}
-  <button data-open-modal="modal-new" class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">+ Novo operador</button>
+  <button data-open-modal="modal-new" class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">+ Novo usuário</button>
   {% endif %}
 </div>
 
@@ -31,7 +31,7 @@ subheading %}
   <table class="min-w-full divide-y divide-slate-100 text-sm">
     <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
       <tr>
-        <th class="px-5 py-3">Operador</th>
+        <th class="px-5 py-3">Usuário</th>
         <th class="px-5 py-3">Vínculo</th>
         <th class="px-5 py-3">Acesso</th>
         <th class="px-5 py-3">Último login</th>
@@ -72,11 +72,17 @@ subheading %}
           <a href="/operadores/{{ o.id }}/permissoes" class="text-xs font-medium text-cyan-600 hover:underline">Permissões</a>
           {% if user.is_superuser %}
           <button data-open-modal="edit-{{ o.id }}" class="ml-3 text-xs font-medium text-cyan-600 hover:underline">Editar</button>
+          {% if o.id != user.id %}
+          <form method="post" action="/operadores/{{ o.id }}/excluir" class="ml-3 inline"
+            onsubmit="return confirm('Excluir o usuário \'{{ o.full_name }}\'? Isso remove o acesso dele a todos os sistemas integrados. Não tem como desfazer.')">
+            <button class="text-xs font-medium text-red-600 hover:underline">Excluir</button>
+          </form>
+          {% endif %}
           {% endif %}
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="6" class="px-5 py-10 text-center text-slate-400">Nenhum operador.</td></tr>
+      <tr><td colspan="6" class="px-5 py-10 text-center text-slate-400">Nenhum usuário.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -85,7 +91,7 @@ subheading %}
 {% if user.is_superuser %}
 <div id="modal-new" class="modal-overlay fixed inset-0 z-40 hidden items-center justify-center p-4">
   <div class="w-full max-w-lg rounded-2xl border border-slate-100 bg-white p-6">
-    <h3 class="text-lg font-semibold text-slate-800">Novo operador</h3>
+    <h3 class="text-lg font-semibold text-slate-800">Novo usuário</h3>
     <form method="post" action="/operadores" class="mt-4 grid gap-3 sm:grid-cols-2">
       {{ f.field("full_name", "Nome completo", required=True, span=True) }}
       {{ f.field("username", "Usuário", required=True) }}

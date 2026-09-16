@@ -1,7 +1,7 @@
 {% extends "base.html" %} {% import "partials/forms.html" as f %} {% block title
-%}Aplicações{% endblock %} {% block heading %}Aplicações{% endblock %} {% block
+%}Sistemas{% endblock %} {% block heading %}Sistemas{% endblock %} {% block
 subheading %}
-<p class="text-xs text-slate-500">Apps satélite que usam o APP CENTRAL para login e permissões</p>
+<p class="text-xs text-slate-500">Sistemas integrados ao APP CENTRAL para login e permissões</p>
 {% endblock %} {% block content %}
 
 {% macro client_select(clients, selected="") %}
@@ -18,7 +18,7 @@ subheading %}
 
 {% if new_secret %}
 <div class="mb-4 rounded-xl border border-amber-200 bg-amber-100 p-4 text-sm text-amber-700">
-  <p class="font-semibold">Guarde o segredo do app "{{ new_secret.slug }}" — ele não será mostrado de novo:</p>
+  <p class="font-semibold">Guarde o segredo do sistema "{{ new_secret.slug }}" — ele não será mostrado de novo:</p>
   <div class="mt-2 grid gap-1 font-mono text-xs">
     <div>client_id: <span class="select-all">{{ new_secret.client_id }}</span></div>
     <div>client_secret: <span class="select-all">{{ new_secret.client_secret }}</span></div>
@@ -26,9 +26,24 @@ subheading %}
 </div>
 {% endif %}
 
+{% if import_summary %}
+<div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-100 p-4 text-sm text-emerald-700">
+  <p class="font-semibold">
+    Importação de "{{ import_summary.slug }}" concluída: {{ import_summary.created }} permissão(ões) nova(s),
+    {{ import_summary.updated }} atualizada(s).
+  </p>
+  {% if import_summary.orphaned_codes %}
+  <p class="mt-1 text-xs">
+    Não removidas automaticamente (não estavam no spec):
+    <span class="font-mono">{{ import_summary.orphaned_codes | join(", ") }}</span>
+  </p>
+  {% endif %}
+</div>
+{% endif %}
+
 <div class="mb-4 flex justify-end">
   {% if user.is_superuser %}
-  <button data-open-modal="modal-new" class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">+ Nova aplicação</button>
+  <a href="/apps/importar" class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">Importar especificação</a>
   {% endif %}
 </div>
 
@@ -52,8 +67,11 @@ subheading %}
       {% if user.is_superuser %}
       <div class="flex gap-2 text-xs">
         <button data-open-modal="edit-{{ app.id }}" class="font-medium text-cyan-600 hover:underline">Editar</button>
-        <form method="post" action="/apps/{{ app.id }}/rotacionar-segredo" onsubmit="return confirm('Rotacionar o client_secret deste app?')">
+        <form method="post" action="/apps/{{ app.id }}/rotacionar-segredo" onsubmit="return confirm('Rotacionar o client_secret deste sistema?')">
           <button class="font-medium text-orange-600 hover:underline">Rotacionar segredo</button>
+        </form>
+        <form method="post" action="/apps/{{ app.id }}/excluir" onsubmit="return confirm('Excluir o sistema \'{{ app.name }}\'? Isso apaga também o catálogo de permissões e todos os acessos já concedidos aos usuários. Não tem como desfazer.')">
+          <button class="font-medium text-red-600 hover:underline">Excluir</button>
         </form>
       </div>
       {% endif %}
@@ -69,59 +87,105 @@ subheading %}
       {% if app.base_url %}<div>base_url: {{ app.base_url }}</div>{% endif %}
     </div>
 
-    <div class="border-t border-slate-100 px-5 py-3">
-      <div class="mb-2 flex items-center justify-between">
-        <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Permissões ({{ app.permissions | length }})</h3>
-      </div>
-      <ul class="space-y-1">
-        {% for p in app.permissions %}
-        <li class="flex items-center justify-between rounded-md bg-slate-50 px-2 py-1 text-xs">
-          <span><span class="font-mono text-slate-600">{{ p.code }}</span> — {{ p.name }}</span>
-          {% if user.is_superuser %}
-          <form method="post" action="/apps/{{ app.id }}/permissoes/{{ p.id }}/remover">
-            <button class="text-red-600 hover:underline">remover</button>
-          </form>
-          {% endif %}
-        </li>
-        {% else %}
-        <li class="text-xs text-slate-400">Nenhuma permissão cadastrada.</li>
-        {% endfor %}
-      </ul>
-      {% if user.is_superuser %}
-      <form method="post" action="/apps/{{ app.id }}/permissoes" class="mt-3 grid grid-cols-2 gap-2">
-        <input name="code" required placeholder="clientes.editar" class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-cyan-500" />
-        <input name="name" required placeholder="Editar clientes" class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-cyan-500" />
-        <input name="description" placeholder="Descrição (opcional)" class="col-span-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-cyan-500" />
-        <button class="col-span-2 rounded-lg border border-cyan-200 bg-cyan-100 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:brightness-105">+ Adicionar permissão</button>
-      </form>
-      {% endif %}
+    <div class="flex items-center justify-between border-t border-slate-100 px-5 py-3">
+      <p class="text-xs text-slate-500">
+        {{ app.permissions | length }} permissão(ões) · {{ granted_users_count.get(app.id, 0) }} usuário(s) com acesso
+      </p>
+      <button data-open-modal="users-{{ app.id }}" class="text-xs font-medium text-cyan-600 hover:underline">Usuários &amp; permissões</button>
     </div>
   </div>
   {% else %}
-  <p class="text-sm text-slate-400">Nenhuma aplicação cadastrada.</p>
+  <p class="text-sm text-slate-400">Nenhum sistema integrado ainda.</p>
   {% endfor %}
 </div>
 
-{% if user.is_superuser %}
-<div id="modal-new" class="modal-overlay fixed inset-0 z-40 hidden items-center justify-center p-4">
-  <div class="w-full max-w-lg rounded-2xl border border-slate-100 bg-white p-6">
-    <h3 class="text-lg font-semibold text-slate-800">Nova aplicação</h3>
-    <form method="post" action="/apps" class="mt-4 grid gap-3 sm:grid-cols-2">
-      {{ f.field("name", "Nome", required=True) }}
-      {{ f.field("slug", "Slug (ex.: app-1)", required=True) }}
-      {{ f.field("base_url", "URL base", span=True, placeholder="https://app1.exemplo.gov.br") }}
-      {{ f.textarea_field("redirect_uris", "Redirect URIs (uma por linha)", placeholder="https://app1.exemplo.gov.br/auth/callback") }}
-      {{ f.field("allowed_scopes", "Scopes", value="openid profile email", span=True) }}
-      {{ client_select(clients) }}
-      {{ f.textarea_field("description", "Descrição", rows=2) }}
-      <div class="sm:col-span-2 mt-2 flex justify-end gap-2">
-        <button type="button" data-close-modal="modal-new" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600">Cancelar</button>
-        <button class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">Criar app</button>
+{% for app in apps %}
+<div id="users-{{ app.id }}" class="modal-overlay fixed inset-0 z-40 hidden items-center justify-center p-2 sm:p-6">
+  <div class="flex h-[95vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white">
+    <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+      <div>
+        <h3 class="text-lg font-semibold text-slate-800">Usuários &amp; permissões — {{ app.name }}</h3>
+        <p class="text-xs text-slate-500">Administradores têm acesso total automaticamente e não aparecem aqui.</p>
       </div>
-    </form>
+      <button type="button" data-close-modal="users-{{ app.id }}" class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Fechar ✕</button>
+    </div>
+
+    {% if not app.permissions %}
+    <p class="px-6 py-6 text-sm text-slate-500">
+      Este sistema ainda não tem permissões cadastradas.
+      <a href="/apps/importar" class="font-medium text-cyan-600 hover:underline">Importe a especificação</a> pra cadastrar.
+    </p>
+    {% else %}
+    <div class="flex-1 overflow-y-auto px-6 py-4">
+      <form id="perms-form-{{ app.id }}" method="post" action="/apps/{{ app.id }}/usuarios"></form>
+
+      {% set grouped_perms = app.permissions | groupby("category") %}
+      <div class="space-y-2">
+        {% for op in operators %}
+        <details class="rounded-xl border border-slate-100">
+          <summary class="cursor-pointer select-none list-none px-4 py-3 hover:bg-slate-50">
+            <span class="text-sm font-medium text-slate-700">{{ op.full_name }}</span>
+            <span class="text-xs text-slate-400">({{ op.username }} · {{ op.email }})</span>
+            <span class="ml-2 rounded-full bg-cyan-100 px-2 py-0.5 text-[11px] font-medium text-cyan-700">
+              {{ granted_count.get((app.id, op.id), 0) }}/{{ app.permissions | length }} permissões
+            </span>
+            {% if not op.is_active %}
+            <span class="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-medium text-orange-700">inativo</span>
+            {% endif %}
+          </summary>
+
+          <div class="border-t border-slate-100 px-4 py-3">
+            <form method="post" action="/operadores/{{ op.id }}/editar" class="mb-3 flex flex-wrap items-end gap-2 rounded-lg bg-slate-50 p-2.5">
+              <div>
+                <label class="mb-0.5 block text-[11px] font-medium text-slate-500">Nome</label>
+                <input name="full_name" value="{{ op.full_name }}" required class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-cyan-500" />
+              </div>
+              <div>
+                <label class="mb-0.5 block text-[11px] font-medium text-slate-500">E-mail</label>
+                <input name="email" type="email" value="{{ op.email }}" required class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-cyan-500" />
+              </div>
+              <label class="flex items-center gap-1.5 pb-1.5 text-xs text-slate-600">
+                <input type="checkbox" name="is_active" {{ "checked" if op.is_active }} /> Ativo
+              </label>
+              <button class="rounded-lg border border-cyan-200 bg-cyan-100 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:brightness-105">Salvar dados</button>
+            </form>
+            <form method="post" action="/operadores/{{ op.id }}/excluir" class="mb-3"
+              onsubmit="return confirm('Excluir o usuário \'{{ op.full_name }}\'? Isso remove o acesso dele a TODOS os sistemas integrados, não só a este. Não tem como desfazer.')">
+              <button class="text-xs font-medium text-red-600 hover:underline">Excluir usuário</button>
+            </form>
+
+            {% for category, perms in grouped_perms %}
+            <div class="mt-3 first:mt-0">
+              <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{{ category.replace("_", " ") | title }}</p>
+              <div class="grid gap-1.5 sm:grid-cols-2">
+                {% for p in perms %}
+                <label class="flex items-start gap-2 rounded-lg px-2 py-1 text-xs hover:bg-slate-50">
+                  <input type="checkbox" form="perms-form-{{ app.id }}" name="grant" value="{{ op.id }}:{{ p.id }}" class="mt-0.5"
+                    {{ "checked" if (op.id, p.id) in granted_pairs }} />
+                  <span><span class="font-medium text-slate-600">{{ p.name }}</span> <span class="block font-mono text-[11px] text-slate-400">{{ p.code }}</span></span>
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </details>
+        {% else %}
+        <p class="text-sm text-slate-400">Nenhum usuário cadastrado ainda.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-2 border-t border-slate-200 bg-white px-6 py-3">
+      <button type="button" data-close-modal="users-{{ app.id }}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600">Cancelar</button>
+      <button type="submit" form="perms-form-{{ app.id }}" class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">Salvar permissões</button>
+    </div>
+    {% endif %}
   </div>
 </div>
+{% endfor %}
 
+{% if user.is_superuser %}
 {% for app in apps %}
 <div id="edit-{{ app.id }}" class="modal-overlay fixed inset-0 z-40 hidden items-center justify-center p-4">
   <div class="w-full max-w-lg rounded-2xl border border-slate-100 bg-white p-6">
@@ -133,7 +197,7 @@ subheading %}
       {{ f.field("allowed_scopes", "Scopes", value=app.allowed_scopes, span=True) }}
       {{ client_select(clients, app.client_id or "") }}
       {{ f.textarea_field("description", "Descrição", value=app.description or "", rows=2) }}
-      <div class="sm:col-span-2">{{ f.checkbox("is_active", "Aplicação ativa", checked=app.is_active) }}</div>
+      <div class="sm:col-span-2">{{ f.checkbox("is_active", "Sistema ativo", checked=app.is_active) }}</div>
       <div class="sm:col-span-2 mt-2 flex justify-end gap-2">
         <button type="button" data-close-modal="edit-{{ app.id }}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600">Cancelar</button>
         <button class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">Salvar</button>

@@ -4,6 +4,8 @@ __pycache__/
 venv/
 env/
 .env
+.env.production
+.env.*.local
 *.log
 .pytest_cache/
 .mypy_cache/

@@ -31,4 +31,19 @@
       });
     }
   });
+
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest && e.target.closest("[data-copy-target]");
+    if (!btn) return;
+    var el = document.getElementById(btn.getAttribute("data-copy-target"));
+    if (!el) return;
+    var text = "value" in el ? el.value : el.textContent;
+    navigator.clipboard.writeText(text).then(function () {
+      var original = btn.textContent;
+      btn.textContent = "Copiado!";
+      setTimeout(function () {
+        btn.textContent = original;
+      }, 1500);
+    });
+  });
 })();

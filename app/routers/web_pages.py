@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core import audit
+from app.core.prompts import DISCOVERY_PROMPT, IMPLEMENTATION_PROMPT
 from app.core.deps import require_web_admin, require_web_user
 from app.core.security import (
     generate_client_id,
@@ -26,7 +27,7 @@ from app.models import (
     User,
     UserAppPermission,
 )
-from app.services import permissions as perm_service
+from app.services import app_import, permissions as perm_service
 
 router = APIRouter(include_in_schema=False)
 
@@ -85,19 +86,13 @@ def dashboard(
 
     kpis = [
         {
-            "label": "Clientes ativos",
-            "value": db.scalar(select(func.count(Client.id)).where(Client.is_active.is_(True))),
-            "hover": "hover:border-cyan-400",
-            "icon": "building",
-        },
-        {
-            "label": "Operadores ativos",
+            "label": "Usuários ativos",
             "value": db.scalar(select(func.count(User.id)).where(User.is_active.is_(True))),
             "hover": "hover:border-emerald-400",
             "icon": "users",
         },
         {
-            "label": "Aplicações",
+            "label": "Sistemas integrados",
             "value": db.scalar(select(func.count(Application.id)).where(Application.is_active.is_(True))),
             "hover": "hover:border-violet-400",
             "icon": "grid",
@@ -130,7 +125,7 @@ def dashboard(
             "icon": "alert",
         },
         {
-            "label": "Operadores pendentes",
+            "label": "Usuários pendentes",
             "value": db.scalar(select(func.count(User.id)).where(User.is_active.is_(False))),
             "hover": "hover:border-orange-400",
             "icon": "clock",
@@ -154,19 +149,25 @@ def dashboard(
         .limit(12)
     ).all()
 
-    by_tier = dict(
-        db.execute(
-            select(Client.tier, func.count(Client.id)).group_by(Client.tier)
-        ).all()
-    )
-    tiers = [
-        {"name": t.value, "count": by_tier.get(t, 0)} for t in ClientTier
-    ]
+    systems = db.execute(
+        select(Application, func.count(Permission.id))
+        .outerjoin(Permission, Permission.application_id == Application.id)
+        .group_by(Application.id)
+        .order_by(Application.name)
+        .limit(8)
+    ).all()
 
     return render(
         request,
         "dashboard.html",
-        {"user": user, "kpis": kpis, "recent": recent, "tiers": tiers},
+        {
+            "user": user,
+            "kpis": kpis,
+            "recent": recent,
+            "systems": systems,
+            "discovery_prompt": DISCOVERY_PROMPT,
+            "implementation_prompt": IMPLEMENTATION_PROMPT,
+        },
     )
 
 
@@ -365,6 +366,25 @@ def operators_update(
     return RedirectResponse(_back(request, "/operadores"), status_code=status.HTTP_302_FOUND)
 
 
+@router.post("/operadores/{user_id}/excluir")
+def operators_delete(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_web_admin),
+):
+    target = db.get(User, user_id) or _404("Operador")
+    if target.id == user.id:
+        raise HTTPException(status_code=400, detail="Você não pode excluir seu próprio usuário.")
+    username = target.username
+    audit.record(db, "operator.delete", actor=user, target_type="user", target_id=target.id,
+                 description=f"Excluiu operador {username} (com acessos concedidos em todos os sistemas)",
+                 request=request, commit=False)
+    db.delete(target)
+    db.commit()
+    return RedirectResponse(_back(request, "/operadores"), status_code=status.HTTP_302_FOUND)
+
+
 @router.get("/operadores/{user_id}/permissoes")
 def operator_permissions(
     user_id: int,
@@ -446,11 +466,37 @@ def apps_list(
         .order_by(Application.name)
     ).all()
     clients = db.scalars(select(Client).order_by(Client.name)).all()
+    operators = db.scalars(
+        select(User)
+        .where(User.is_superuser.is_(False))
+        .order_by(User.is_active.desc(), User.full_name)
+    ).all()
+    grants = db.scalars(select(UserAppPermission)).all()
+    granted_pairs = {(g.user_id, g.permission_id) for g in grants}
+    distinct_by_app: dict[int, set[int]] = {}
+    granted_count: dict[tuple[int, int], int] = {}
+    for g in grants:
+        distinct_by_app.setdefault(g.application_id, set()).add(g.user_id)
+        key = (g.application_id, g.user_id)
+        granted_count[key] = granted_count.get(key, 0) + 1
+    granted_users_count = {app_id: len(users) for app_id, users in distinct_by_app.items()}
+
     new_secret = request.session.pop("new_app_secret", None)
+    import_summary = request.session.pop("import_summary", None)
     return render(
         request,
         "apps/list.html",
-        {"user": user, "apps": apps, "clients": clients, "new_secret": new_secret},
+        {
+            "user": user,
+            "apps": apps,
+            "clients": clients,
+            "operators": operators,
+            "granted_pairs": granted_pairs,
+            "granted_users_count": granted_users_count,
+            "granted_count": granted_count,
+            "new_secret": new_secret,
+            "import_summary": import_summary,
+        },
     )
 
 
@@ -545,6 +591,23 @@ def apps_rotate_secret(
     return RedirectResponse("/apps", status_code=status.HTTP_302_FOUND)
 
 
+@router.post("/apps/{app_id}/excluir")
+def apps_delete(
+    app_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_web_admin),
+):
+    app = db.get(Application, app_id) or _404("Sistema")
+    slug = app.slug
+    audit.record(db, "app.delete", actor=user, target_type="application", target_id=app.id,
+                 description=f"Excluiu sistema {slug} (com catálogo de permissões e acessos concedidos)",
+                 request=request, commit=False)
+    db.delete(app)
+    db.commit()
+    return RedirectResponse("/apps", status_code=status.HTTP_302_FOUND)
+
+
 @router.post("/apps/{app_id}/permissoes")
 def apps_add_permission(
     app_id: int,
@@ -593,6 +656,123 @@ def apps_delete_permission(
                      target_id=app_id, description=f"Removeu permissão {perm.code}",
                      request=request, commit=False)
         db.commit()
+    return RedirectResponse("/apps", status_code=status.HTTP_302_FOUND)
+
+
+@router.post("/apps/{app_id}/usuarios")
+async def apps_sync_users(
+    app_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_web_admin),
+):
+    """Concede/revoga, num passo só, as permissões deste sistema para vários
+    usuários — a visão inversa de /operadores/{id}/permissoes."""
+    app = db.get(Application, app_id) or _404("Sistema")
+    valid_permission_ids = {p.id for p in app.permissions}
+    permissions_by_id = {p.id: p for p in app.permissions}
+
+    form = await request.form()
+    selected: set[tuple[int, int]] = set()
+    for raw in form.getlist("grant"):
+        user_id_s, _, perm_id_s = raw.partition(":")
+        if not user_id_s.isdigit() or not perm_id_s.isdigit():
+            continue
+        perm_id = int(perm_id_s)
+        if perm_id in valid_permission_ids:
+            selected.add((int(user_id_s), perm_id))
+
+    current = db.scalars(
+        select(UserAppPermission).where(UserAppPermission.application_id == app_id)
+    ).all()
+    current_pairs = {(g.user_id, g.permission_id): g for g in current}
+
+    users_by_id = {
+        u.id: u
+        for u in db.scalars(
+            select(User).where(User.id.in_({p[0] for p in selected} | {p[0] for p in current_pairs}))
+        ).all()
+    }
+
+    added = removed = 0
+    for pair in selected - current_pairs.keys():
+        u = users_by_id.get(pair[0])
+        perm = permissions_by_id.get(pair[1])
+        if u and perm:
+            perm_service.grant(db, user=u, permission=perm, granted_by=user)
+            added += 1
+    for pair in current_pairs.keys() - selected:
+        u = users_by_id.get(pair[0])
+        perm = permissions_by_id.get(pair[1])
+        if u and perm:
+            perm_service.revoke(db, user=u, permission=perm)
+            removed += 1
+
+    if added or removed:
+        audit.record(
+            db, "permission.sync", actor=user, target_type="application", target_id=app.id,
+            description=f"Permissões de {app.slug}: +{added} / -{removed}",
+            request=request, meta={"added": added, "removed": removed}, commit=False,
+        )
+    db.commit()
+    return RedirectResponse("/apps", status_code=status.HTTP_302_FOUND)
+
+
+# --------------------------------------------------------------------------- #
+# Importar especificação (JSON do prompt de descoberta) — cria/atualiza a
+# Application e o catálogo de Permissions em um passo só.
+# --------------------------------------------------------------------------- #
+@router.get("/apps/importar")
+def apps_import_form(
+    request: Request,
+    user: User = Depends(require_web_admin),
+):
+    return render(request, "apps/import.html", {"user": user})
+
+
+@router.post("/apps/importar/preview")
+def apps_import_preview(
+    request: Request,
+    spec_json: str = Form(...),
+    user: User = Depends(require_web_admin),
+    db: Session = Depends(get_db),
+):
+    try:
+        spec = app_import.parse_spec(spec_json)
+        plan = app_import.build_plan(db, spec)
+    except app_import.SpecError as exc:
+        return render(
+            request,
+            "apps/import.html",
+            {"user": user, "error": str(exc), "spec_json": spec_json},
+        )
+    return render(
+        request,
+        "apps/import.html",
+        {"user": user, "plan": plan, "spec_json": spec_json},
+    )
+
+
+@router.post("/apps/importar/confirmar")
+def apps_import_confirm(
+    request: Request,
+    spec_json: str = Form(...),
+    user: User = Depends(require_web_admin),
+    db: Session = Depends(get_db),
+):
+    try:
+        spec = app_import.parse_spec(spec_json)
+        plan = app_import.build_plan(db, spec)
+    except app_import.SpecError as exc:
+        return render(
+            request,
+            "apps/import.html",
+            {"user": user, "error": str(exc), "spec_json": spec_json},
+        )
+    summary = app_import.apply_plan(db, plan, actor=user, request=request)
+    request.session["import_summary"] = summary
+    if summary["new_secret"]:
+        request.session["new_app_secret"] = summary["new_secret"]
     return RedirectResponse("/apps", status_code=status.HTTP_302_FOUND)
 
 

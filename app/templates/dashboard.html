@@ -65,28 +65,53 @@ heading %}Dashboard{% endblock %} {% block subheading %}
     </ul>
   </div>
 
-  <!-- Clientes por plano -->
+  <!-- Sistemas integrados -->
   <div class="rounded-2xl border border-slate-100 bg-white">
-    <div class="border-b border-slate-100 px-5 py-4">
-      <h2 class="text-sm font-semibold text-slate-700">Clientes por plano</h2>
+    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+      <h2 class="text-sm font-semibold text-slate-700">Sistemas integrados</h2>
+      <a href="/apps" class="text-xs font-medium text-cyan-600 hover:underline">Ver todos</a>
     </div>
-    <ul class="space-y-3 px-5 py-4">
-      {% set total = tiers | sum(attribute="count") or 1 %}
-      {% for t in tiers %}
-      <li>
-        <div class="flex items-center justify-between text-sm">
-          <span class="font-medium text-slate-600">{{ t.name | capitalize }}</span>
-          <span class="text-slate-400">{{ t.count }}</span>
+    <ul class="divide-y divide-slate-100">
+      {% for app, perm_count in systems %}
+      <li class="flex items-center justify-between px-5 py-3 text-sm">
+        <div>
+          <p class="font-medium text-slate-700">{{ app.name }}</p>
+          <p class="text-xs text-slate-400">{{ perm_count }} permissão(ões)</p>
         </div>
-        <div class="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
-          <div
-            class="h-full rounded-full bg-gradient-to-r from-cyan-600 to-blue-600"
-            style="width: {{ (t.count / total * 100) | round(1) }}%"
-          ></div>
-        </div>
+        {% if app.is_active %}
+        <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">ativo</span>
+        {% else %}
+        <span class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">inativo</span>
+        {% endif %}
       </li>
+      {% else %}
+      <li class="px-5 py-8 text-center text-sm text-slate-400">Nenhum sistema integrado ainda.</li>
       {% endfor %}
     </ul>
+  </div>
+</section>
+
+<section class="mt-6 grid gap-4 lg:grid-cols-2">
+  <div class="rounded-2xl border border-slate-100 bg-white">
+    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+      <div>
+        <h2 class="text-sm font-semibold text-slate-700">Prompt de descoberta</h2>
+        <p class="text-xs text-slate-400">Manda pra IA do sistema satélite — ela só lê o código dele</p>
+      </div>
+      <button data-copy-target="prompt-discovery" class="rounded-lg border border-cyan-200 bg-cyan-100 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:brightness-105">Copiar</button>
+    </div>
+    <textarea id="prompt-discovery" readonly rows="8" class="w-full resize-none border-0 bg-transparent px-5 py-3 font-mono text-[11px] text-slate-500 outline-none">{{ discovery_prompt }}</textarea>
+  </div>
+
+  <div class="rounded-2xl border border-slate-100 bg-white">
+    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+      <div>
+        <h2 class="text-sm font-semibold text-slate-700">Prompt de implementação</h2>
+        <p class="text-xs text-slate-400">Manda depois de importar a resposta do primeiro em Sistemas</p>
+      </div>
+      <button data-copy-target="prompt-implementation" class="rounded-lg border border-cyan-200 bg-cyan-100 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:brightness-105">Copiar</button>
+    </div>
+    <textarea id="prompt-implementation" readonly rows="8" class="w-full resize-none border-0 bg-transparent px-5 py-3 font-mono text-[11px] text-slate-500 outline-none">{{ implementation_prompt }}</textarea>
   </div>
 </section>
 {% endblock %}
