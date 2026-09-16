@@ -25,6 +25,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # O driver padrão ("docker") não sabe exportar cache tipo "gha" — só o
+      # driver docker-container (que este step ativa) sabe. Sem isso o build
+      # falha com "Cache export is not supported for the docker driver" e o
+      # push nunca acontece.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build e push da imagem
         uses: docker/build-push-action@v6
         with:
