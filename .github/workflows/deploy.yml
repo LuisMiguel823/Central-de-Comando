@@ -43,26 +43,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
+  # O Portainer faz GitOps por conta própria (clona, dá pull na imagem nova,
+  # sobe) quando recebe esse webhook — não precisa mais de SSH daqui.
+  # DEPLOY_SSH_KEY/DEPLOY_HOST/DEPLOY_USER/DEPLOY_PATH ficam sem uso; pode
+  # deixar os secrets guardados, sem problema.
+  notify-portainer:
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      packages: read
     steps:
-      - uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
-
-      - name: Add servidor aos known_hosts
-        run: ssh-keyscan -p 22 "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
-
-      - name: Deploy via SSH (só puxa a imagem pronta, não builda no servidor)
-        run: |
-          ssh -p 22 "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" '
-            set -e
-            cd ${{ secrets.DEPLOY_PATH }}
-            git pull origin main
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-            docker compose --env-file .env.production -f docker-compose.prod.yml pull
-            docker compose --env-file .env.production -f docker-compose.prod.yml up -d
-          '
+      - name: Dispara redeploy no Portainer
+        run: curl -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}"
