@@ -43,37 +43,15 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
+  # O Portainer (stack "from repository" com docker-compose.prod.yml) é quem
+  # faz o deploy: ao receber este webhook ele dá pull na imagem nova do ghcr.io
+  # e recria os containers. Roda DEPOIS do build (needs) — senão o Portainer
+  # subiria a imagem :latest antiga, antes do push terminar.
+  # A URL do webhook é um segredo (quem tem ela dispara redeploy): fica só no
+  # secret PORTAINER_WEBHOOK_URL do GitHub, nunca escrita aqui no arquivo.
+  notify-portainer:
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      packages: read
     steps:
-      - name: Deploy no Servidor via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            set -e
-            # As variáveis de produção (SECRET_KEY, DB_*, BASE_URL, etc.) ficam
-            # num arquivo só no servidor, fora do Git. Sem ele o container
-            # subiria com defaults de dev (sem banco, senha admin123), então
-            # aborta ANTES de derrubar o container atual.
-            ENV_FILE=/opt/auth_npibrasil/.env.production
-            test -f "$ENV_FILE" || { echo "Falta $ENV_FILE no servidor"; exit 1; }
-
-            # A imagem é privada: o docker do servidor precisa estar logado no
-            # ghcr.io pra dar pull (o registry cadastrado no Portainer não vale
-            # pra comando docker rodado por SSH).
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-
-            docker pull ghcr.io/luismiguel823/central-de-comando:latest
-            docker stop auth_npibrasil || true
-            docker rm auth_npibrasil || true
-            # A aplicação escuta na 8000 dentro do container (não na 80).
-            docker run -d --name auth_npibrasil --restart always \
-              --env-file "$ENV_FILE" \
-              -p 9137:8000 \
-              ghcr.io/luismiguel823/central-de-comando:latest
+      - name: Dispara redeploy no Portainer
+        run: curl -fsS --retry 3 --retry-delay 5 -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}"
