@@ -53,7 +53,7 @@ services:
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD}
     ports:
-      - "9136:8000"
+      - "9137:8000"
 
 volumes:
   mysql-data:
