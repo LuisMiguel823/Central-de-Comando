@@ -4,29 +4,17 @@
 # arquivo nunca vai existir fisicamente. Os valores abaixo (${VAR}) são
 # resolvidos pelo próprio Docker Compose a partir do painel "Environment
 # variables" da stack no Portainer (ou de um .env ao lado deste arquivo, se
-# rodar via CLI com --env-file) — mesma técnica que o serviço "db" já usa.
+# rodar via CLI com --env-file).
 # Preencha essas variáveis no Portainer com os valores de .env.production.example.
+#
+# Banco externo (MySQL compartilhado da empresa, ex.: DB01 — mesmo servidor
+# que já hospeda o atendimentonpi_db do MILVUS) em vez de um container MySQL
+# próprio: sem serviço "db" aqui, o "app" se conecta direto via DB_HOST/
+# DB_PORT/DB_NAME/DB_USER/DB_PASSWORD do painel da stack. O banco (ex.:
+# autenticacaonpi_db) e o usuário com privilégio nele precisam já existir
+# nesse servidor — o Alembic (rodado no boot do container, ver Dockerfile)
+# só cria as TABELAS dentro do banco, não o banco em si.
 services:
-  db:
-    image: mysql:8.4
-    container_name: central_comando_db_prod
-    restart: unless-stopped
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - mysql-data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD}"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    # Sem publicar porta pro host — só o container "app" fala com o banco,
-    # via rede interna do compose (host "db").
-
   app:
     # Imagem pronta, publicada pelo GitHub Actions em ghcr.io — o servidor só
     # dá "docker compose pull", nunca builda nada aqui (sem git/pip/build
@@ -34,13 +22,9 @@ services:
     image: ghcr.io/luismiguel823/central-de-comando:latest
     container_name: central_comando_app_prod
     restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
     environment:
-      # dentro da rede do compose o host do banco é "db", não localhost
-      DB_HOST: db
-      DB_PORT: "3306"
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-3306}
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -54,6 +38,3 @@ services:
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD}
     ports:
       - "9137:8000"
-
-volumes:
-  mysql-data:
