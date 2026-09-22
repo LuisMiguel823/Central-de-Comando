@@ -3,14 +3,19 @@ from __future__ import annotations
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import create_engine, pool
 
 from app.config import settings
 from app.database import Base
 import app.models  # noqa: F401  (registra todas as tabelas no metadata)
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# NÃO usar config.set_main_option("sqlalchemy.url", ...) aqui: o ConfigParser
+# do Alembic trata "%" como caractere de interpolação, e uma senha com "!"/"["
+# vira "%21"/"%5B" na URL (quote_plus) — o set_main_option quebra com
+# "ValueError: invalid interpolation syntax" nesse caso. run_migrations_online
+# abaixo cria a engine direto de settings.database_url, sem passar pelo
+# ConfigParser, então nunca esbarra nisso.
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -31,11 +36,7 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    connectable = create_engine(settings.database_url, poolclass=pool.NullPool)
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
