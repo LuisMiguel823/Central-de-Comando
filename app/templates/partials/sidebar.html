@@ -1,65 +1,69 @@
 {% set path = current_path %}
 <aside class="sidebar fixed inset-y-0 left-0 z-30 flex flex-col">
-  <div class="flex items-center gap-2.5 px-5 py-5">
+  <div class="flex items-center gap-2.5 px-4 py-5">
     <img src="/static/img/logo-npi.png" alt="{{ app_name }}" class="h-9 w-9 shrink-0" />
-    <div class="leading-tight">
+    <div class="sidebar-label leading-tight">
       <div class="sidebar-title text-sm font-semibold">{{ app_name }}</div>
       <div class="sidebar-section text-[10px] font-semibold uppercase">APP Central</div>
     </div>
   </div>
 
-  <nav class="flex-1 space-y-6 overflow-y-auto px-3 pb-6">
+  <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 pb-6">
     <div>
-      <p class="sidebar-section px-3 pb-2 text-[11px] font-semibold uppercase">Painel</p>
+      <p class="sidebar-section sidebar-label px-3 pb-2 text-[11px] font-semibold uppercase">Painel</p>
       <a
         href="/"
+        title="Dashboard"
         class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium {{ 'is-active-primary' if path == '/' }}"
       >
-        <svg class="sidebar-ico h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="sidebar-ico h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 13h8V3H3v10Zm10 8h8V11h-8v10ZM3 21h8v-6H3v6Zm10-18v6h8V3h-8Z" />
         </svg>
-        Dashboard
+        <span class="sidebar-label">Dashboard</span>
       </a>
     </div>
 
     <div>
-      <p class="sidebar-section px-3 pb-2 text-[11px] font-semibold uppercase">Cadastros</p>
+      <p class="sidebar-section sidebar-label px-3 pb-2 text-[11px] font-semibold uppercase">Cadastros</p>
       <a
         href="/apps"
+        title="Sistemas"
         class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium {{ 'is-active' if path.startswith('/apps') }}"
       >
-        <svg class="sidebar-ico h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="sidebar-ico h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 3h8v8H3V3Zm10 0h8v8h-8V3ZM3 13h8v8H3v-8Zm10 0h8v8h-8v-8Z" />
         </svg>
-        Sistemas
+        <span class="sidebar-label">Sistemas</span>
       </a>
       <a
         href="/operadores"
+        title="Usuários"
         class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium {{ 'is-active' if path.startswith('/operadores') }}"
       >
-        <svg class="sidebar-ico h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="sidebar-ico h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
         </svg>
-        Usuários
+        <span class="sidebar-label">Usuários</span>
       </a>
     </div>
 
     <div>
-      <p class="sidebar-section px-3 pb-2 text-[11px] font-semibold uppercase">Governança</p>
+      <p class="sidebar-section sidebar-label px-3 pb-2 text-[11px] font-semibold uppercase">Governança</p>
       <a
         href="/auditoria"
+        title="Auditoria"
         class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium {{ 'is-active' if path.startswith('/auditoria') }}"
       >
-        <svg class="sidebar-ico h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="sidebar-ico h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z" />
           <path d="M14 2v6h6M9 13l2 2 4-4" />
         </svg>
-        Auditoria
+        <span class="sidebar-label">Auditoria</span>
       </a>
     </div>
   </nav>
 
-  <div class="border-t border-cyan-700/40 px-5 py-3 text-[11px] text-slate-300/80">
+  <div class="sidebar-label border-t border-cyan-700/40 px-5 py-3 text-[11px] text-slate-300/80">
     v{{ app_version }} · {{ "gov.br ON" if govbr_enabled else "gov.br OFF" }}
   </div>
 </aside>

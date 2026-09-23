@@ -73,16 +73,18 @@ heading %}Dashboard{% endblock %} {% block subheading %}
     </div>
     <ul class="divide-y divide-slate-100">
       {% for app, perm_count in systems %}
-      <li class="flex items-center justify-between px-5 py-3 text-sm">
-        <div>
-          <p class="font-medium text-slate-700">{{ app.name }}</p>
-          <p class="text-xs text-slate-400">{{ perm_count }} permissão(ões)</p>
-        </div>
-        {% if app.is_active %}
-        <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">ativo</span>
-        {% else %}
-        <span class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">inativo</span>
-        {% endif %}
+      <li>
+        <a href="/apps/{{ app.slug }}" class="flex items-center justify-between px-5 py-3 text-sm hover:bg-slate-50">
+          <div>
+            <p class="font-medium text-slate-700">{{ app.name }}</p>
+            <p class="text-xs text-slate-400">{{ perm_count }} permissão(ões)</p>
+          </div>
+          {% if app.is_active %}
+          <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">ativo</span>
+          {% else %}
+          <span class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">inativo</span>
+          {% endif %}
+        </a>
       </li>
       {% else %}
       <li class="px-5 py-8 text-center text-sm text-slate-400">Nenhum sistema integrado ainda.</li>

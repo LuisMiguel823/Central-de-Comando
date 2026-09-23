@@ -466,23 +466,17 @@ def apps_list(
         .order_by(Application.name)
     ).all()
     clients = db.scalars(select(Client).order_by(Client.name)).all()
-    operators = db.scalars(
-        select(User)
-        .where(User.is_superuser.is_(False))
-        .order_by(User.is_active.desc(), User.full_name)
-    ).all()
     grants = db.scalars(select(UserAppPermission)).all()
-    granted_pairs = {(g.user_id, g.permission_id) for g in grants}
     distinct_by_app: dict[int, set[int]] = {}
-    granted_count: dict[tuple[int, int], int] = {}
     for g in grants:
         distinct_by_app.setdefault(g.application_id, set()).add(g.user_id)
-        key = (g.application_id, g.user_id)
-        granted_count[key] = granted_count.get(key, 0) + 1
     granted_users_count = {app_id: len(users) for app_id, users in distinct_by_app.items()}
 
-    new_secret = request.session.pop("new_app_secret", None)
+    # apenas o resumo de cada módulo aqui — a config detalhada de usuários
+    # fica na página própria do módulo (/apps/{slug}), leve mesmo com muitos
+    # sistemas.
     import_summary = request.session.pop("import_summary", None)
+    new_secret = request.session.pop("new_app_secret", None)
     return render(
         request,
         "apps/list.html",
@@ -490,10 +484,7 @@ def apps_list(
             "user": user,
             "apps": apps,
             "clients": clients,
-            "operators": operators,
-            "granted_pairs": granted_pairs,
             "granted_users_count": granted_users_count,
-            "granted_count": granted_count,
             "new_secret": new_secret,
             "import_summary": import_summary,
         },
@@ -566,7 +557,7 @@ def apps_update(
     audit.record(db, "app.update", actor=user, target_type="application", target_id=app.id,
                  description=f"Editou app {app.slug}", request=request, commit=False)
     db.commit()
-    return RedirectResponse("/apps", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(f"/apps/{app.slug}", status_code=status.HTTP_302_FOUND)
 
 
 @router.post("/apps/{app_id}/rotacionar-segredo")
@@ -588,7 +579,7 @@ def apps_rotate_secret(
         "client_id": app.oauth_client_id,
         "client_secret": secret,
     }
-    return RedirectResponse("/apps", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(f"/apps/{app.slug}", status_code=status.HTTP_302_FOUND)
 
 
 @router.post("/apps/{app_id}/excluir")
@@ -638,7 +629,7 @@ def apps_add_permission(
                  target_id=app_id, description=f"Nova permissão {code} em {app.slug}",
                  request=request, commit=False)
     db.commit()
-    return RedirectResponse("/apps", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(f"/apps/{app.slug}", status_code=status.HTTP_302_FOUND)
 
 
 @router.post("/apps/{app_id}/permissoes/{perm_id}/remover")
@@ -649,6 +640,7 @@ def apps_delete_permission(
     db: Session = Depends(get_db),
     user: User = Depends(require_web_admin),
 ):
+    app = db.get(Application, app_id) or _404("Sistema")
     perm = db.get(Permission, perm_id)
     if perm and perm.application_id == app_id:
         db.delete(perm)
@@ -656,7 +648,7 @@ def apps_delete_permission(
                      target_id=app_id, description=f"Removeu permissão {perm.code}",
                      request=request, commit=False)
         db.commit()
-    return RedirectResponse("/apps", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(f"/apps/{app.slug}", status_code=status.HTTP_302_FOUND)
 
 
 @router.post("/apps/{app_id}/usuarios")
@@ -715,7 +707,7 @@ async def apps_sync_users(
             request=request, meta={"added": added, "removed": removed}, commit=False,
         )
     db.commit()
-    return RedirectResponse("/apps", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(f"/apps/{app.slug}", status_code=status.HTTP_302_FOUND)
 
 
 # --------------------------------------------------------------------------- #
@@ -774,6 +766,53 @@ def apps_import_confirm(
     if summary["new_secret"]:
         request.session["new_app_secret"] = summary["new_secret"]
     return RedirectResponse("/apps", status_code=status.HTTP_302_FOUND)
+
+
+# --------------------------------------------------------------------------- #
+# Página do módulo (um sistema por vez) — precisa vir DEPOIS de /apps/importar
+# acima: rota literal tem que ser registrada antes da genérica {slug}, senão
+# o Starlette casa "/apps/importar" aqui e a página de import fica inacessível.
+# --------------------------------------------------------------------------- #
+@router.get("/apps/{slug}")
+def app_detail(
+    slug: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_web_user),
+):
+    app = db.scalar(
+        select(Application)
+        .options(selectinload(Application.client), selectinload(Application.permissions))
+        .where(Application.slug == slug)
+    ) or _404("Sistema")
+    clients = db.scalars(select(Client).order_by(Client.name)).all()
+    operators = db.scalars(
+        select(User)
+        .where(User.is_superuser.is_(False))
+        .order_by(User.is_active.desc(), User.full_name)
+    ).all()
+    grants = db.scalars(
+        select(UserAppPermission).where(UserAppPermission.application_id == app.id)
+    ).all()
+    granted_pairs = {(g.user_id, g.permission_id) for g in grants}
+    granted_count: dict[int, int] = {}
+    for g in grants:
+        granted_count[g.user_id] = granted_count.get(g.user_id, 0) + 1
+
+    new_secret = request.session.pop("new_app_secret", None)
+    return render(
+        request,
+        "apps/detail.html",
+        {
+            "user": user,
+            "app": app,
+            "clients": clients,
+            "operators": operators,
+            "granted_pairs": granted_pairs,
+            "granted_count": granted_count,
+            "new_secret": new_secret,
+        },
+    )
 
 
 # --------------------------------------------------------------------------- #
