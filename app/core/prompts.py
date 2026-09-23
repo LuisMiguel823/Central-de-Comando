@@ -114,7 +114,7 @@ Depois do passo 0, garanta que o sistema (construindo do zero OU completando o
 que já existe) cumpre TODOS os itens abaixo — não é opcional escolher alguns:
 
 1. Login via OIDC Authorization Code + PKCE contra o APP CENTRAL, trocando o
-   "code" em POST {issuer}/oauth/token. O id_token / userinfo trazem: sub, name,
+   "code" em POST {BASE_URL_CENTRAL}/oauth/token. O id_token / userinfo trazem: sub, name,
    email, "permissions" (lista de strings), "roles", "client_code" — todos eles
    precisam ser efetivamente lidos e usados, nenhum pode ficar recebido e ignorado.
 
@@ -133,7 +133,7 @@ que já existe) cumpre TODOS os itens abaixo — não é opcional escolher algun
 
 4. Não guarde senha nem grants de permissão localmente — a lista "permissions"
    do token é a fonte da verdade a cada login. Se a sessão local durar muito
-   tempo sem novo login, revalide com POST {issuer}/api/v1/introspect (form:
+   tempo sem novo login, revalide com POST {BASE_URL_CENTRAL}/api/v1/introspect (form:
    token, client_id, client_secret) antes de confiar numa permissão sensível.
 
 5. Se o sistema hoje não tem campo de "usuário ativo/inativo" pra revogar
@@ -185,6 +185,6 @@ vincular esse usuário na primeira vez que ele aparece:
 Sobre confiar no token: NÃO faça uma chamada ao APP CENTRAL a cada
 requisição do usuário — confie no id_token/access_token (e na lista
 "permissions" nele) pela duração da sessão local, e só revalide via
-POST {issuer}/api/v1/introspect quando o token expirar ou antes de uma ação
+POST {BASE_URL_CENTRAL}/api/v1/introspect quando o token expirar ou antes de uma ação
 especialmente sensível (ex.: excluir dado, exportar relatório com PII).
 """
