@@ -156,3 +156,35 @@ e o que foi completado nela vs. construído do zero; (b) toda checagem de
 autorização que ficou sem permissão correspondente; (c) qualquer coisa que você
 não teve certeza e decidiu não mexer.
 """
+
+# Complemento opcional — cole junto com o IMPLEMENTATION_PROMPT quando o
+# sistema satélite for multi-tenant (precisa saber a QUAL cliente/tenant
+# vincular o usuário no primeiro login) e você quer que o cadastro local
+# vire 100% automático, sem passo manual algum.
+TENANT_PROVISIONING_ADDENDUM = """\
+Sobre o registro local mínimo do passo 3: NUNCA recuse o login por "usuário
+ainda não existe aqui" — sempre faça upsert (cria se não existir, atualiza se
+existir), casando por "sub" (ou e-mail, se o provedor não mandar "sub"
+estável). O token/userinfo do APP CENTRAL traz um claim "client_code"
+(string ou null) — use-o pra resolver automaticamente a qual tenant/cliente
+vincular esse usuário na primeira vez que ele aparece:
+
+- "client_code" presente → vincule (ou crie, se ainda não existir aqui) o
+  tenant correspondente a esse código, e crie o vínculo (Membership/papel)
+  do usuário com ele.
+- "client_code" ausente e o claim "roles" ou as "permissions" indicarem
+  administrador global (ex.: presença de alguma permissão prefixada
+  "admin_") → trate como Super Admin, sem tenant nenhum.
+- "client_code" ausente e SEM sinal de administrador global → é uma
+  configuração incompleta do lado do APP CENTRAL (operador sem cliente
+  vinculado lá), não um caso a resolver adivinhando aqui: registre o login
+  mesmo assim (upsert do registro mínimo), mas sem Membership nenhum, e
+  deixe claro no resumo final que esse usuário precisa ser vinculado a um
+  tenant manualmente ou ter o "Cliente" dele corrigido no APP CENTRAL.
+
+Sobre confiar no token: NÃO faça uma chamada ao APP CENTRAL a cada
+requisição do usuário — confie no id_token/access_token (e na lista
+"permissions" nele) pela duração da sessão local, e só revalide via
+POST {issuer}/api/v1/introspect quando o token expirar ou antes de uma ação
+especialmente sensível (ex.: excluir dado, exportar relatório com PII).
+"""

@@ -8,7 +8,11 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core import audit
-from app.core.prompts import DISCOVERY_PROMPT, IMPLEMENTATION_PROMPT
+from app.core.prompts import (
+    DISCOVERY_PROMPT,
+    IMPLEMENTATION_PROMPT,
+    TENANT_PROVISIONING_ADDENDUM,
+)
 from app.core.deps import require_web_admin, require_web_user
 from app.core.security import (
     generate_client_id,
@@ -167,6 +171,7 @@ def dashboard(
             "systems": systems,
             "discovery_prompt": DISCOVERY_PROMPT,
             "implementation_prompt": IMPLEMENTATION_PROMPT,
+            "tenant_addendum_prompt": TENANT_PROVISIONING_ADDENDUM,
         },
     )
 
