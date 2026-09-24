@@ -7,6 +7,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.config import settings
 from app.core import audit
 from app.core.prompts import (
     DISCOVERY_PROMPT,
@@ -31,7 +32,12 @@ from app.models import (
     User,
     UserAppPermission,
 )
-from app.services import app_import, permissions as perm_service
+from app.services import (
+    app_import,
+    operators_import,
+    password_links,
+    permissions as perm_service,
+)
 
 router = APIRouter(include_in_schema=False)
 
@@ -300,7 +306,92 @@ def operators_list(
     return render(
         request,
         "operators/list.html",
-        {"user": user, "operators": operators, "clients": clients, "q": q or ""},
+        {
+            "user": user,
+            "operators": operators,
+            "clients": clients,
+            "q": q or "",
+            "import_summary": request.session.pop("operators_import_summary", None),
+        },
+    )
+
+
+# Importação em massa (JSON colado) — literais ANTES das rotas {user_id}.
+@router.get("/operadores/importar")
+def operators_import_form(
+    request: Request,
+    user: User = Depends(require_web_admin),
+):
+    return render(request, "operators/import.html", {"user": user})
+
+
+@router.post("/operadores/importar/preview")
+def operators_import_preview(
+    request: Request,
+    spec_json: str = Form(...),
+    user: User = Depends(require_web_admin),
+    db: Session = Depends(get_db),
+):
+    try:
+        plan = operators_import.build_plan(db, operators_import.parse_spec(spec_json))
+    except operators_import.SpecError as exc:
+        return render(
+            request, "operators/import.html",
+            {"user": user, "error": str(exc), "spec_json": spec_json},
+        )
+    return render(
+        request, "operators/import.html",
+        {"user": user, "plan": plan, "spec_json": spec_json},
+    )
+
+
+@router.post("/operadores/importar/confirmar")
+def operators_import_confirm(
+    request: Request,
+    spec_json: str = Form(...),
+    user: User = Depends(require_web_admin),
+    db: Session = Depends(get_db),
+):
+    try:
+        plan = operators_import.build_plan(db, operators_import.parse_spec(spec_json))
+        summary = operators_import.apply_plan(db, plan, actor=user, request=request)
+    except operators_import.SpecError as exc:
+        return render(
+            request, "operators/import.html",
+            {"user": user, "error": str(exc), "spec_json": spec_json},
+        )
+    # Um link de definição de senha por usuário NOVO. Os links só existem nesta
+    # resposta (o banco guarda só o hash) — por isso renderiza direto, sem redirect.
+    links = []
+    for uid in summary["new_user_ids"]:
+        new_user = db.get(User, uid)
+        url, expires = password_links.create_link(db, new_user, actor=user, request=request)
+        links.append({"email": new_user.email, "full_name": new_user.full_name, "url": url})
+    db.commit()
+    return render(
+        request,
+        "operators/import_result.html",
+        {"user": user, "summary": summary, "links": links,
+         "expires_hours": settings.password_link_ttl_hours},
+    )
+
+
+# Link avulso (usuário existente sem senha, link expirado, etc.).
+@router.post("/operadores/{user_id}/link-senha")
+def operator_password_link(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_web_admin),
+):
+    target = db.get(User, user_id) or _404("Usuário")
+    url, expires = password_links.create_link(db, target, actor=user, request=request)
+    db.commit()
+    return render(
+        request,
+        "operators/password_link.html",
+        {"user": user, "target": target, "url": url, "expires": expires,
+         "expires_hours": settings.password_link_ttl_hours},
     )
 
 

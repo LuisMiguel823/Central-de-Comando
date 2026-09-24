@@ -13,7 +13,7 @@ from app.core.security import utcnow, verify_password
 from app.core.templating import render
 from app.database import get_db
 from app.models import Client, User
-from app.services import govbr, loginunico, microsoft
+from app.services import govbr, loginunico, microsoft, password_links
 
 router = APIRouter(tags=["auth"])
 
@@ -98,6 +98,48 @@ def login_submit(
     _login_user(request, user)
     audit.record(db, "auth.login", actor=user, description="Login local", request=request)
     return RedirectResponse(_safe_next(next), status_code=status.HTTP_302_FOUND)
+
+
+# --------------------------------------------------------------------------- #
+# Definir senha via link de uso único (público — o token na URL é a credencial)
+# --------------------------------------------------------------------------- #
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "?"
+
+
+@router.get("/definir-senha/{token}", response_class=HTMLResponse)
+def set_password_page(token: str, request: Request, db: Session = Depends(get_db)):
+    if password_links.rate_limited(_client_ip(request)):
+        return render(request, "set_password.html", {"state": "limited"}, status_code=429)
+    if password_links.find_valid(db, token) is None:
+        return render(request, "set_password.html", {"state": "invalid"}, status_code=404)
+    return render(request, "set_password.html", {"state": "form", "token": token})
+
+
+@router.post("/definir-senha/{token}", response_class=HTMLResponse)
+def set_password_submit(
+    token: str,
+    request: Request,
+    password: str = Form(...),
+    confirm: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    if password_links.rate_limited(_client_ip(request)):
+        return render(request, "set_password.html", {"state": "limited"}, status_code=429)
+    row = password_links.find_valid(db, token)
+    if row is None:
+        return render(request, "set_password.html", {"state": "invalid"}, status_code=404)
+    error = password_links.validate_password(password, confirm)
+    if error:
+        return render(
+            request, "set_password.html",
+            {"state": "form", "token": token, "error": error}, status_code=400,
+        )
+    user = password_links.consume(db, row, password, request=request)
+    return render(request, "set_password.html", {"state": "done", "active": user.is_active})
 
 
 @router.get("/logout")

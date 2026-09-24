@@ -1,0 +1,76 @@
+{% extends "base.html" %} {% block title %}Importação concluída{% endblock %}
+{% block heading %}Importação concluída{% endblock %} {% block subheading %}
+<p class="text-xs text-slate-500">{{ summary.app_slug }}</p>
+{% endblock %} {% block content %}
+<div class="max-w-4xl space-y-4">
+  <div class="rounded-xl border border-emerald-200 bg-emerald-100 p-4 text-sm text-emerald-700">
+    <p class="font-semibold">
+      {{ summary.users_created }} usuário(s) novo(s), {{ summary.users_updated }} atualizado(s),
+      {{ summary.grants_added }} permissão(ões) concedida(s), {{ summary.clients_created }} cliente(s) novo(s).
+    </p>
+  </div>
+
+  {% if links %}
+  <div class="rounded-xl border border-amber-200 bg-amber-100 p-4 text-sm text-amber-700">
+    <p class="font-semibold">Salve estes links AGORA — eles não serão mostrados de novo.</p>
+    <p class="mt-1 text-xs">
+      Cada link vale para uma única pessoa, expira em {{ expires_hours }}h e para de funcionar depois de usado.
+      Se perder algum, gere outro em Usuários → editar → "Gerar link de senha".
+      Não atualize esta página (a importação é idempotente, mas os links não voltam).
+    </p>
+  </div>
+
+  <div class="rounded-2xl border border-slate-100 bg-white p-5">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-slate-800">Links de definição de senha ({{ links | length }})</h3>
+      <button id="dl-csv" class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">Baixar CSV</button>
+    </div>
+    <div class="mt-3 overflow-x-auto">
+      <table id="links-table" class="min-w-full text-xs">
+        <thead class="text-left uppercase tracking-wide text-slate-400">
+          <tr><th class="py-1 pr-3">E-mail</th><th class="py-1 pr-3">Nome</th><th class="py-1">Link</th></tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-600">
+          {% for l in links %}
+          <tr>
+            <td class="py-1 pr-3">{{ l.email }}</td>
+            <td class="py-1 pr-3">{{ l.full_name }}</td>
+            <td class="py-1 font-mono"><span class="select-all break-all">{{ l.url }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <p class="text-sm text-slate-500">Nenhum usuário novo — não há links a gerar.</p>
+  {% endif %}
+
+  <a href="/operadores" class="inline-block rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600">Ir para Usuários</a>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  (function () {
+    var btn = document.getElementById("dl-csv");
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      var rows = [["email", "nome", "link"]];
+      document.querySelectorAll("#links-table tbody tr").forEach(function (tr) {
+        var td = tr.querySelectorAll("td");
+        rows.push([td[0].textContent.trim(), td[1].textContent.trim(), td[2].textContent.trim()]);
+      });
+      var csv = rows.map(function (r) {
+        return r.map(function (c) { return '"' + c.replace(/"/g, '""') + '"'; }).join(",");
+      }).join("\r\n");
+      var blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "links-definir-senha.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    });
+  })();
+</script>
+{% endblock %}

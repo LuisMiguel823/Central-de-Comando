@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     access_token_ttl: int = 3600
     refresh_token_ttl: int = 2_592_000
     auth_code_ttl: int = 120
+    # validade do link de "definir senha" gerado pelo admin
+    password_link_ttl_hours: int = 72
 
     # --- gov.br ---
     govbr_enabled: bool = False
