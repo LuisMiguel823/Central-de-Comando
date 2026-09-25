@@ -108,6 +108,45 @@ def test_authorization_code_flow(admin_client, oidc_app):
     assert "access_token" in r.json()
 
 
+def test_authorize_without_session_keeps_full_query_through_login(client, oidc_app):
+    """Regressão: deslogado -> /login -> volta pro /authorize COM todos os parâmetros."""
+    params = {
+        "response_type": "code",
+        "client_id": oidc_app["client_id"],
+        "redirect_uri": REDIRECT,
+        "scope": "openid profile email",
+        "state": "abc&x=1",  # caracteres que quebrariam um next mal codificado
+        "code_challenge": "h1yEAkgH6cMNBrj3v8Ep5wciVHZDsvLHcW1Yiolmx34",
+        "code_challenge_method": "S256",
+    }
+    r = client.get("/oauth/authorize", params=params, follow_redirects=False)
+    assert r.status_code == 302
+    login_url = urlparse(r.headers["location"])
+    assert login_url.path == "/login"
+    nxt = parse_qs(login_url.query)["next"][0]
+    assert parse_qs(urlparse(nxt).query)["redirect_uri"] == [REDIRECT]
+
+    r = client.post(
+        "/login",
+        data={"identifier": "admin", "password": "admin123", "next": nxt},
+        follow_redirects=False,
+    )
+    assert r.status_code == 302
+    back = urlparse(r.headers["location"])
+    assert back.path == "/oauth/authorize"
+    q = parse_qs(back.query)
+    for key, value in params.items():
+        assert q[key] == [value], key
+
+    # já logado, o /authorize entrega o code de verdade
+    r = client.get(r.headers["location"], follow_redirects=False)
+    assert r.status_code == 302
+    final = urlparse(r.headers["location"])
+    assert f"{final.scheme}://{final.netloc}{final.path}" == REDIRECT
+    assert parse_qs(final.query)["state"] == ["abc&x=1"]
+    assert "code" in parse_qs(final.query)
+
+
 def test_authorize_rejects_unknown_redirect(admin_client, oidc_app):
     r = admin_client.get(
         "/oauth/authorize",

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 from datetime import timedelta
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -67,8 +68,14 @@ def authorize(
 
     uid = request.session.get("uid")
     if not uid:
+        # O "next" precisa ir CODIFICADO por inteiro: com os "&" soltos, só o
+        # primeiro parâmetro (client_id) sobrevivia ao login e o /authorize
+        # voltava sem response_type/redirect_uri/state/code_challenge.
+        next_url = request.url.path
+        if request.url.query:
+            next_url += "?" + request.url.query
         return RedirectResponse(
-            f"/login?next={request.url.path}%3F{request.url.query}",
+            f"/login?next={quote(next_url, safe='')}",
             status_code=status.HTTP_302_FOUND,
         )
     user = db.get(User, uid)
@@ -99,8 +106,6 @@ def authorize(
     sep = "&" if "?" in redirect_uri else "?"
     location = f"{redirect_uri}{sep}code={code.code}"
     if state:
-        from urllib.parse import quote
-
         location += f"&state={quote(state)}"
     return RedirectResponse(location, status_code=status.HTTP_302_FOUND)
 
