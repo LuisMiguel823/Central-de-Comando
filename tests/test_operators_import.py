@@ -77,7 +77,13 @@ def test_apply_then_idempotent_second_run(db, admin):
 
     ana = db.scalar(select(User).where(User.email == "ana.import@exemplo.com"))
     assert ana.password_hash is None and ana.is_active is True
-    assert ana.client.code == "IMPX1"
+    # cliente é POR SISTEMA: fica em user_app_clients, não no cadastro geral do usuário
+    assert ana.client_id is None
+    from app.models import Application, UserAppClient
+    app1 = db.scalar(select(Application).where(Application.slug == APP))
+    link = db.scalar(select(UserAppClient).where(
+        UserAppClient.user_id == ana.id, UserAppClient.application_id == app1.id))
+    assert link is not None and link.client.code == "IMPX1"
     assert _grants(db, "ana.import@exemplo.com") == ["protocolo.criar", "protocolo.ler"]
 
     # segunda rodada: nada novo, nada duplicado

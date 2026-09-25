@@ -30,6 +30,7 @@ from app.models import (
     ClientTier,
     Permission,
     User,
+    UserAppClient,
     UserAppPermission,
 )
 from app.services import (
@@ -782,6 +783,39 @@ async def apps_sync_users(
         ).all()
     }
 
+    # Cliente do usuário NESTE sistema (campos "client_<user_id>"; vazio = sem vínculo)
+    valid_client_ids = {c.id for c in db.scalars(select(Client)).all()}
+    links = {
+        r.user_id: r
+        for r in db.scalars(
+            select(UserAppClient).where(UserAppClient.application_id == app_id)
+        ).all()
+    }
+    clients_changed = 0
+    for key in form.keys():
+        if not key.startswith("client_") or not key[7:].isdigit():
+            continue
+        uid = int(key[7:])
+        raw_value = str(form.get(key) or "").strip()
+        wanted = int(raw_value) if raw_value.isdigit() and int(raw_value) in valid_client_ids else None
+        current_link = links.get(uid)
+        if wanted is None and current_link is not None:
+            db.delete(current_link)
+            clients_changed += 1
+        elif wanted is not None and current_link is None:
+            if db.get(User, uid) is not None:
+                db.add(UserAppClient(user_id=uid, application_id=app_id, client_id=wanted))
+                clients_changed += 1
+        elif wanted is not None and current_link.client_id != wanted:
+            current_link.client_id = wanted
+            clients_changed += 1
+    if clients_changed:
+        audit.record(
+            db, "app.user_clients", actor=user, target_type="application", target_id=app.id,
+            description=f"Clientes por usuário em {app.slug}: {clients_changed} alteração(ões)",
+            request=request, meta={"changed": clients_changed}, commit=False,
+        )
+
     added = removed = 0
     for pair in selected - current_pairs.keys():
         u = users_by_id.get(pair[0])
@@ -894,6 +928,13 @@ def app_detail(
     granted_count: dict[int, int] = {}
     for g in grants:
         granted_count[g.user_id] = granted_count.get(g.user_id, 0) + 1
+    app_clients = {
+        r.user_id: r.client_id
+        for r in db.scalars(
+            select(UserAppClient).where(UserAppClient.application_id == app.id)
+        ).all()
+    }
+    clients_by_id = {c.id: c for c in clients}
 
     new_secret = request.session.pop("new_app_secret", None)
     return render(
@@ -903,6 +944,8 @@ def app_detail(
             "user": user,
             "app": app,
             "clients": clients,
+            "clients_by_id": clients_by_id,
+            "app_clients": app_clients,
             "operators": operators,
             "granted_pairs": granted_pairs,
             "granted_count": granted_count,

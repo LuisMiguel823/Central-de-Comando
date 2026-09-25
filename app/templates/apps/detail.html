@@ -121,12 +121,29 @@
         <span class="ml-2 rounded-full bg-cyan-100 px-2 py-0.5 text-[11px] font-medium text-cyan-700">
           {{ granted_count.get(op.id, 0) }}/{{ app.permissions | length }} permissões
         </span>
+        {% set cid = app_clients.get(op.id) %}
+        {% if cid and clients_by_id.get(cid) %}
+        <span class="ml-1 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-medium text-violet-700">{{ clients_by_id[cid].code }}</span>
+        {% else %}
+        <span class="ml-1 rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-medium text-orange-700">sem cliente</span>
+        {% endif %}
         {% if not op.is_active %}
         <span class="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-medium text-orange-700">inativo</span>
         {% endif %}
       </summary>
 
       <div class="border-t border-slate-100 px-4 py-3">
+        <div class="mb-3 rounded-lg bg-slate-50 p-2.5">
+          <label class="mb-0.5 block text-[11px] font-medium text-slate-500">Cliente neste sistema (vai como <span class="font-mono">client_code</span> no login)</label>
+          <select name="client_{{ op.id }}" form="perms-form"
+            class="w-full max-w-sm rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-cyan-500">
+            <option value="">— sem cliente neste sistema —</option>
+            {% for c in clients %}
+            <option value="{{ c.id }}" {{ "selected" if app_clients.get(op.id) == c.id }}>{{ c.code }} — {{ c.name }}</option>
+            {% endfor %}
+          </select>
+          <p class="mt-1 text-[11px] text-slate-400">Vale só para {{ app.name }}. Salvo junto com as permissões, no botão "Salvar permissões".</p>
+        </div>
         <form method="post" action="/operadores/{{ op.id }}/editar" class="mb-3 flex flex-wrap items-end gap-2 rounded-lg bg-slate-50 p-2.5">
           <div>
             <label class="mb-0.5 block text-[11px] font-medium text-slate-500">Nome</label>

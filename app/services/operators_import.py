@@ -38,6 +38,7 @@ from app.models import (
     Client,
     ClientTier,
     User,
+    UserAppClient,
     UserAppPermission,
 )
 from app.services import permissions as perm_service
@@ -250,6 +251,18 @@ def build_plan(db: Session, spec: dict) -> ImportPlan:
             ).all()
         }
     client_by_code = db_clients
+    # cliente atual de cada usuário existente NESTE sistema (e não no cadastro geral)
+    current_app_client: dict[int, int] = {}
+    if existing_users:
+        current_app_client = {
+            r.user_id: r.client_id
+            for r in db.scalars(
+                select(UserAppClient).where(
+                    UserAppClient.application_id == app.id,
+                    UserAppClient.user_id.in_([u.id for u in existing_users.values()]),
+                )
+            ).all()
+        }
 
     for _, raw, email in entries:
         existing = existing_users.get(email)
@@ -301,7 +314,7 @@ def build_plan(db: Session, spec: dict) -> ImportPlan:
                 changed = True
             if client_code:
                 target_client = client_by_code.get(client_code)
-                current_id = existing.client_id
+                current_id = current_app_client.get(existing.id)
                 target_id = target_client.id if target_client else None
                 if target_client is None or current_id != target_id:
                     changed = True
@@ -385,20 +398,31 @@ def apply_plan(db: Session, plan: ImportPlan, *, actor: User, request) -> dict:
                 password_hash=None,
                 is_superuser=item.is_superuser,
                 is_active=True,
-                client_id=client.id if client else None,
             )
             db.add(user)
             db.flush()
             users_created += 1
             new_user_ids.append(user.id)
+            if client is not None:
+                db.add(UserAppClient(user_id=user.id, application_id=app.id, client_id=client.id))
         else:
             touched = False
             if item.full_name and user.full_name != item.full_name:
                 user.full_name = item.full_name
                 touched = True
-            if client is not None and user.client_id != client.id:
-                user.client_id = client.id
-                touched = True
+            if client is not None:
+                link = db.scalar(
+                    select(UserAppClient).where(
+                        UserAppClient.user_id == user.id,
+                        UserAppClient.application_id == app.id,
+                    )
+                )
+                if link is None:
+                    db.add(UserAppClient(user_id=user.id, application_id=app.id, client_id=client.id))
+                    touched = True
+                elif link.client_id != client.id:
+                    link.client_id = client.id
+                    touched = True
             if item.promote_superuser and not user.is_superuser:
                 user.is_superuser = True
                 touched = True

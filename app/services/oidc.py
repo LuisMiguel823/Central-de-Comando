@@ -6,11 +6,12 @@ import hashlib
 import secrets
 from datetime import timedelta
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.security import create_jwt, generate_token, utcnow
-from app.models import Application, OAuthToken, User
+from app.models import Application, OAuthToken, User, UserAppClient
 from app.services.permissions import permissions_for
 
 
@@ -30,11 +31,24 @@ def userinfo_claims(db: Session, user: User, app: Application, scope: str) -> di
     # permissões do usuário no app que pediu o token
     claims["permissions"] = permissions_for(db, user, app)
     claims["roles"] = ["superuser"] if user.is_superuser else []
-    if user.client_id:
-        claims["client_id"] = user.client_id
-        if user.client:
-            claims["client_code"] = user.client.code
+    client = effective_client(db, user, app)
+    if client is not None:
+        claims["client_id"] = client.id
+        claims["client_code"] = client.code
     return claims
+
+
+def effective_client(db: Session, user: User, app: Application):
+    """Cliente do usuário NESTE sistema: o vínculo configurado na página do
+    sistema tem prioridade; sem ele, cai no cliente do cadastro geral (se houver)."""
+    per_app = db.scalar(
+        select(UserAppClient).where(
+            UserAppClient.user_id == user.id, UserAppClient.application_id == app.id
+        )
+    )
+    if per_app is not None:
+        return per_app.client
+    return user.client
 
 
 def build_id_token(
