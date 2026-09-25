@@ -35,6 +35,7 @@ from app.models import (
 )
 from app.services import (
     app_import,
+    oidc,
     operators_import,
     password_links,
     permissions as perm_service,
@@ -55,7 +56,7 @@ def _back(request: Request, fallback: str) -> str:
 def about_page(
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(require_web_user),
+    user: User = Depends(require_web_admin),
 ):
     federations = [
         {
@@ -84,6 +85,29 @@ def about_page(
 
 
 # --------------------------------------------------------------------------- #
+# Operador comum: só vê os sistemas em que tem acesso (o que ele pode fazer
+# em cada um é definido pelo usuário dele dentro do próprio sistema).
+# --------------------------------------------------------------------------- #
+def _my_systems(request: Request, db: Session, user: User):
+    apps = db.scalars(
+        select(Application)
+        .join(UserAppPermission, UserAppPermission.application_id == Application.id)
+        .where(UserAppPermission.user_id == user.id, Application.is_active.is_(True))
+        .group_by(Application.id)
+        .order_by(Application.name)
+    ).all()
+    items = [
+        {
+            "app": a,
+            "permissions": perm_service.permissions_for(db, user, a),
+            "client": oidc.effective_client(db, user, a),
+        }
+        for a in apps
+    ]
+    return render(request, "my_systems.html", {"user": user, "items": items})
+
+
+# --------------------------------------------------------------------------- #
 # Dashboard
 # --------------------------------------------------------------------------- #
 @router.get("/")
@@ -92,6 +116,9 @@ def dashboard(
     db: Session = Depends(get_db),
     user: User = Depends(require_web_user),
 ):
+    if not user.is_superuser:
+        return _my_systems(request, db, user)
+
     today = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     week_ago = utcnow() - timedelta(days=7)
 
@@ -191,7 +218,7 @@ def clients_list(
     request: Request,
     q: str | None = None,
     db: Session = Depends(get_db),
-    user: User = Depends(require_web_user),
+    user: User = Depends(require_web_admin),
 ):
     stmt = select(Client).order_by(Client.name)
     if q:
@@ -290,7 +317,7 @@ def operators_list(
     request: Request,
     q: str | None = None,
     db: Session = Depends(get_db),
-    user: User = Depends(require_web_user),
+    user: User = Depends(require_web_admin),
 ):
     stmt = (
         select(User)
@@ -555,7 +582,7 @@ async def operator_permissions_save(
 def apps_list(
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(require_web_user),
+    user: User = Depends(require_web_admin),
 ):
     apps = db.scalars(
         select(Application)
@@ -908,7 +935,7 @@ def app_detail(
     slug: str,
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(require_web_user),
+    user: User = Depends(require_web_admin),
 ):
     app = db.scalar(
         select(Application)
@@ -964,7 +991,7 @@ def audit_list(
     ator: str | None = None,
     page: int = 1,
     db: Session = Depends(get_db),
-    user: User = Depends(require_web_user),
+    user: User = Depends(require_web_admin),
 ):
     page = max(page, 1)
     per_page = 40

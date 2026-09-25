@@ -19,10 +19,11 @@
         <svg class="sidebar-ico h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 13h8V3H3v10Zm10 8h8V11h-8v10ZM3 21h8v-6H3v6Zm10-18v6h8V3h-8Z" />
         </svg>
-        <span class="sidebar-label">Dashboard</span>
+        <span class="sidebar-label">{{ "Dashboard" if user.is_superuser else "Meus sistemas" }}</span>
       </a>
     </div>
 
+    {% if user.is_superuser %}
     <div>
       <p class="sidebar-section sidebar-label px-3 pb-2 text-[11px] font-semibold uppercase">Cadastros</p>
       <a
@@ -61,6 +62,7 @@
         <span class="sidebar-label">Auditoria</span>
       </a>
     </div>
+    {% endif %}
   </nav>
 
   <div class="sidebar-label border-t border-cyan-700/40 px-5 py-3 text-[11px] text-slate-300/80">

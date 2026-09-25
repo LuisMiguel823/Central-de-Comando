@@ -51,10 +51,20 @@ def test_loginunico_full_flow(client, lu_enabled, monkeypatch):
 
     # sessão logada
     assert client.get("/").status_code == 200
-    ops = client.get("/operadores")
-    assert "Maria Teste da Silva" in ops.text
-    assert "12345678909" in ops.text  # CPF normalizado
-    assert "Login Único N2" in ops.text
+    # operador comum entra, mas não vê as telas de gestão da Central
+    assert client.get("/operadores").status_code == 403
+
+    from sqlalchemy import select
+
+    from app.database import SessionLocal
+    from app.models import User
+
+    db = SessionLocal()
+    try:
+        u = db.scalar(select(User).where(User.cpf == "12345678909"))
+        assert u is not None and u.full_name == "Maria Teste da Silva"
+    finally:
+        db.close()
 
 
 def test_loginunico_level_below_minimum(client, lu_enabled, monkeypatch):
