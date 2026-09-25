@@ -8,13 +8,13 @@
     </div>
   </div>
 
-  <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 pb-6">
+  <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 pb-6 pt-2">
     <div>
       <p class="sidebar-section sidebar-label px-3 pb-2 text-[11px] font-semibold uppercase">Painel</p>
       <a
         href="/"
         title="Dashboard"
-        class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium {{ 'is-active-primary' if path == '/' }}"
+        class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium {{ 'is-active-primary' if path == '/' }}"
       >
         <svg class="sidebar-ico h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 13h8V3H3v10Zm10 8h8V11h-8v10ZM3 21h8v-6H3v6Zm10-18v6h8V3h-8Z" />
@@ -29,7 +29,7 @@
       <a
         href="/apps"
         title="Sistemas"
-        class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium {{ 'is-active' if path.startswith('/apps') }}"
+        class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium {{ 'is-active' if path.startswith('/apps') }}"
       >
         <svg class="sidebar-ico h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 3h8v8H3V3Zm10 0h8v8h-8V3ZM3 13h8v8H3v-8Zm10 0h8v8h-8v-8Z" />
@@ -39,7 +39,7 @@
       <a
         href="/operadores"
         title="Usuários"
-        class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium {{ 'is-active' if path.startswith('/operadores') }}"
+        class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium {{ 'is-active' if path.startswith('/operadores') }}"
       >
         <svg class="sidebar-ico h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
@@ -53,7 +53,7 @@
       <a
         href="/auditoria"
         title="Auditoria"
-        class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium {{ 'is-active' if path.startswith('/auditoria') }}"
+        class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium {{ 'is-active' if path.startswith('/auditoria') }}"
       >
         <svg class="sidebar-ico h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z" />
@@ -65,7 +65,7 @@
     {% endif %}
   </nav>
 
-  <div class="sidebar-label border-t border-cyan-700/40 px-5 py-3 text-[11px] text-slate-300/80">
+  <div class="sidebar-label border-t border-white/10 px-5 py-3 text-[11px] text-slate-300/80">
     v{{ app_version }} · {{ "gov.br ON" if govbr_enabled else "gov.br OFF" }}
   </div>
 </aside>

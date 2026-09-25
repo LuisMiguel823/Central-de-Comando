@@ -1,103 +1,629 @@
-/* ------------------------------------------------------------------ *
- *  Estilos próprios do APP CENTRAL.
- *  A identidade (azul-marinho na lateral + cyan de destaque) é a
- *  mesma nos dois temas; o dark-mode.css só mexe nas superfícies do
- *  conteúdo. Este arquivo cuida do que NÃO deve mudar entre temas.
- * ------------------------------------------------------------------ */
+/* ================================================================== *
+ *  APP CENTRAL — sistema visual
+ *  Identidade mantida (azul-marinho na lateral + cyan de destaque),
+ *  mas com superfícies calmas, tipografia menor-contraste e
+ *  microinterações. Tudo passa por variáveis: o tema escuro só
+ *  troca os valores (o dark-mode.css cuida das utilitárias Tailwind).
+ * ================================================================== */
 
 :root {
-  /* --sidebar-w é a largura "de repouso" (rail retraído, só ícone) — é ela
-     que define a margem do conteúdo, então o conteúdo NUNCA se move quando
-     o mouse passa por cima da lateral (ela só expande por cima, como um
-     overlay). --sidebar-w-expanded é só o hover/foco. */
-  --sidebar-w: 72px;
-  --sidebar-w-expanded: 256px;
+  --sidebar-w: 72px; /* rail retraído: define a margem do conteúdo */
+  --sidebar-w-expanded: 248px;
+
+  --bg: #f4f6fa;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --line: #e6ebf2;
+  --text: #1e293b;
+  --muted: #64748b;
+  --accent: #0891b2;
+  --accent-2: #2563eb;
+  --ring: rgba(6, 182, 212, 0.28);
+
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -14px rgba(15, 23, 42, 0.14);
+  --shadow-pop: 0 20px 50px -18px rgba(15, 23, 42, 0.35);
+
+  --radius: 16px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+html.dark {
+  --bg: #0b1220;
+  --surface: #121b2f;
+  --surface-2: #0f1728;
+  --line: #1f2b45;
+  --text: #dbe4f0;
+  --muted: #8b9ab3;
+  --ring: rgba(34, 211, 238, 0.28);
+  --shadow-card: 0 0 0 rgba(0, 0, 0, 0);
+  --shadow-pop: 0 24px 60px -20px rgba(0, 0, 0, 0.7);
 }
 
+html {
+  font-size: 15px;
+  scroll-behavior: smooth;
+}
 body {
+  font-family: "Inter", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
   font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
+  background: var(--bg);
+  letter-spacing: -0.005em;
+}
+::selection {
+  background: rgba(6, 182, 212, 0.25);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.35) transparent;
+}
+body .text-\[11px\] {
+  font-size: 0.78rem;
+}
+body .text-xs {
+  font-size: 0.8rem;
 }
 
-/* ---------------- Menu lateral (fixo nos dois temas) --------------- */
+/* foco visível e consistente */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ---------------- Lateral (rail retraído + expande no hover) ------- */
 .sidebar {
-  background-image: linear-gradient(135deg, #1e3a8a 0%, #164e63 100%);
-  border-right: 1px solid rgba(14, 116, 144, 0.5); /* cyan-700 / 50% */
+  background-image: linear-gradient(170deg, #17307a 0%, #123a55 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   width: var(--sidebar-w);
   overflow: hidden;
-  transition: width 0.18s ease;
+  transition: width 0.22s var(--ease), box-shadow 0.22s var(--ease);
 }
 .sidebar:hover,
 .sidebar:focus-within {
   width: var(--sidebar-w-expanded);
-  box-shadow: 16px 0 32px -16px rgba(2, 6, 23, 0.45);
+  box-shadow: 18px 0 40px -18px rgba(2, 6, 23, 0.5);
 }
-/* Texto que só aparece com a lateral expandida (hover/foco) — os ícones
-   (.sidebar-ico) ficam sempre visíveis, mesmo retraído. */
 .sidebar-label {
   white-space: nowrap;
   opacity: 0;
-  transition: opacity 0.12s ease 0.05s;
+  transform: translateX(-4px);
+  transition: opacity 0.14s ease 0.04s, transform 0.2s var(--ease) 0.04s;
 }
 .sidebar:hover .sidebar-label,
 .sidebar:focus-within .sidebar-label {
   opacity: 1;
+  transform: none;
 }
 .sidebar-title {
   color: #ffffff;
 }
 .sidebar-section {
-  color: #22d3ee; /* cyan-400 */
-  letter-spacing: 0.08em;
+  color: rgba(165, 243, 252, 0.7);
+  letter-spacing: 0.1em;
 }
 .sidebar-link {
-  color: #cbd5e1; /* slate-300 */
-  transition: background-color 0.15s ease, color 0.15s ease;
+  position: relative;
+  color: #c7d2e5;
+  border-radius: 12px;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
 }
 .sidebar-link:hover {
-  color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.09);
 }
-.sidebar-link.is-active {
-  background-color: rgba(14, 116, 144, 0.3); /* cyan-700 / 30% */
-  color: #ffffff;
+.sidebar-link:active {
+  transform: scale(0.97);
 }
+.sidebar-link.is-active,
 .sidebar-link.is-active-primary {
-  background-color: rgba(6, 182, 212, 0.15); /* cyan-500 / 15% */
-  color: #22d3ee; /* cyan-400 */
+  color: #fff;
+  background-color: rgba(34, 211, 238, 0.16);
+}
+.sidebar-link.is-active::before,
+.sidebar-link.is-active-primary::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 22%;
+  bottom: 22%;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: #22d3ee;
+}
+.sidebar-ico {
+  opacity: 0.8;
+  width: 1.15rem;
+  height: 1.15rem;
 }
 .sidebar-link.is-active .sidebar-ico,
 .sidebar-link.is-active-primary .sidebar-ico {
   opacity: 1;
-}
-.sidebar-ico {
-  opacity: 0.75;
+  color: #67e8f9;
 }
 
-/* ---------------- Botões de destaque (cores vivas fixas) ---------- */
+/* ---------------- Barra superior ---------------------------------- */
+.topbar {
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.topbar.is-stuck {
+  border-bottom-color: var(--line);
+  box-shadow: 0 6px 20px -16px rgba(15, 23, 42, 0.25);
+}
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  height: 2.4rem;
+  width: 2.4rem;
+  border-radius: 12px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+.icon-btn:hover {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--line);
+}
+.theme-ico-sun {
+  display: none;
+}
+html.dark .theme-ico-sun {
+  display: block;
+}
+html.dark .theme-ico-moon {
+  display: none;
+}
+.kbd {
+  font-size: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 1px 6px;
+  color: var(--muted);
+  background: var(--surface-2);
+}
+.search-btn {
+  display: none;
+  align-items: center;
+  gap: 0.6rem;
+  height: 2.4rem;
+  padding: 0 0.7rem 0 0.8rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.85rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.search-btn:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--ring);
+}
+@media (min-width: 768px) {
+  .search-btn {
+    display: inline-flex;
+  }
+}
+
+/* menu do usuário */
+.user-menu {
+  position: relative;
+}
+.user-menu > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.user-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.user-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-pop);
+  padding: 6px;
+  animation: pop-in 0.16s var(--ease);
+  z-index: 50;
+}
+.user-pop a,
+.user-pop button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 9px;
+  font-size: 0.88rem;
+  color: var(--text);
+  text-align: left;
+  transition: background-color 0.12s ease;
+}
+.user-pop a:hover,
+.user-pop button:hover {
+  background: var(--surface-2);
+}
+
+/* ---------------- Conteúdo ---------------------------------------- */
+/* "backwards" (e não "both"): ao terminar, nenhum transform fica ativo —
+   senão os modais (position: fixed) passam a se ancorar neste container. */
+.page-enter {
+  animation: page-in 0.32s var(--ease) backwards;
+}
+.page-wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  width: 100%;
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* cartões: sem borda dura, sombra suave */
+body .rounded-2xl.bg-white,
+body .rounded-xl.bg-white {
+  background: var(--surface);
+  border-color: var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+body a.rounded-2xl.bg-white,
+body .kpi-card {
+  transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease), border-color 0.18s ease;
+}
+body a.rounded-2xl.bg-white:hover,
+body .kpi-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  box-shadow: 0 16px 34px -18px rgba(8, 145, 178, 0.35);
+}
+body a.rounded-2xl.bg-white:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
+/* ---------------- Botões ------------------------------------------ */
+body button,
+body a.rounded-lg {
+  cursor: pointer;
+  transition: transform 0.12s var(--ease), filter 0.15s ease, background-color 0.15s ease,
+    border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+}
+body button:not(:disabled):active,
+body a.rounded-lg:active {
+  transform: scale(0.965);
+}
+body button.rounded-lg,
+body a.rounded-lg {
+  border-radius: 11px;
+}
 .btn-primary {
-  background-image: linear-gradient(to right, #0891b2, #2563eb); /* cyan-600 -> blue-600 */
+  background-image: linear-gradient(135deg, #0ea5c6 0%, #2563eb 100%);
   color: #fff;
+  box-shadow: 0 6px 16px -8px rgba(37, 99, 235, 0.7);
 }
 .btn-primary:hover {
-  filter: brightness(1.06);
+  filter: brightness(1.07);
+  box-shadow: 0 10px 22px -10px rgba(37, 99, 235, 0.85);
+  transform: translateY(-1px);
+}
+/* botões secundários (branco com borda) */
+body button.border.bg-white:hover,
+body a.border.bg-white:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--ring);
+}
+/* estado de carregando (aplicado no submit) */
+button.is-loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.85;
+  color: transparent !important;
+}
+button.is-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  border-top-color: #fff;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-/* ---------------- KPI cards: borda de hover por card -------------- */
-.kpi-card {
-  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+/* ---------------- Campos ------------------------------------------ */
+body input:not([type="checkbox"]):not([type="radio"]),
+body select,
+body textarea {
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
-.kpi-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px -12px rgba(2, 6, 23, 0.25);
+body input:not([type="checkbox"]):not([type="radio"]):hover,
+body select:hover,
+body textarea:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+body input:not([type="checkbox"]):not([type="radio"]):focus,
+body select:focus,
+body textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--ring);
+  outline: none;
+}
+body input[type="checkbox"],
+body input[type="radio"] {
+  accent-color: #0891b2;
+  width: 1.05rem;
+  height: 1.05rem;
+  cursor: pointer;
+}
+body label {
+  cursor: pointer;
+}
+body label.block {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 0.82rem;
 }
 
-/* ---------------- Modal --------------------------------------------- */
+/* ---------------- Tabelas ----------------------------------------- */
+body table thead {
+  background: var(--surface-2);
+}
+body table thead th {
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+}
+body table tbody tr {
+  transition: background-color 0.12s ease;
+}
+body table tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+body table td {
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+}
+/* ações de linha viram botões de verdade (alvo de clique maior) */
+body td a.text-cyan-600,
+body td button.text-cyan-600,
+body td button.text-red-600 {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.7rem;
+  margin-left: 0.15rem !important;
+  border-radius: 9px;
+  font-weight: 600;
+  text-decoration: none !important;
+}
+body td a.text-cyan-600:hover,
+body td button.text-cyan-600:hover {
+  background: rgba(6, 182, 212, 0.13);
+}
+body td button.text-red-600:hover {
+  background: rgba(239, 68, 68, 0.13);
+}
+
+/* badges mais arredondados e legíveis */
+body .rounded-full.px-2 {
+  padding: 0.18rem 0.6rem;
+  font-weight: 600;
+}
+
+/* ---------------- Modais ------------------------------------------ */
 .modal-overlay {
-  background: rgba(2, 6, 23, 0.55);
+  background: rgba(8, 15, 32, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.modal-overlay.flex {
+  animation: fade-in 0.18s ease both;
+}
+.modal-overlay.flex > div {
+  animation: modal-in 0.26s var(--ease) both;
+  box-shadow: var(--shadow-pop);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.965);
+  }
 }
 
-/* ---------------- Scrollbar discreta ------------------------------- */
-* {
-  scrollbar-width: thin;
+/* ---------------- Toasts ------------------------------------------ */
+.toast-host {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 220px;
+  max-width: 380px;
+  padding: 0.75rem 1rem;
+  border-radius: 13px;
+  background: #0f172a;
+  color: #f1f5f9;
+  font-size: 0.88rem;
+  box-shadow: var(--shadow-pop);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  animation: toast-in 0.28s var(--ease) both;
+}
+html.dark .toast {
+  background: #1b2742;
+}
+.toast::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22d3ee;
+  flex: none;
+}
+.toast.is-error::before {
+  background: #f87171;
+}
+.toast.is-ok::before {
+  background: #34d399;
+}
+.toast.is-out {
+  animation: toast-out 0.2s ease both;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+}
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+}
+
+/* ---------------- Paleta de comandos (Ctrl+K) --------------------- */
+.palette {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 14vh 1rem 1rem;
+  background: rgba(8, 15, 32, 0.5);
+  backdrop-filter: blur(6px);
+}
+.palette.is-open {
+  display: flex;
+  animation: fade-in 0.15s ease both;
+}
+.palette-box {
+  width: 100%;
+  max-width: 560px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow-pop);
+  overflow: hidden;
+  animation: modal-in 0.24s var(--ease) both;
+}
+.palette-box input {
+  width: 100%;
+  border: 0 !important;
+  border-bottom: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  padding: 1rem 1.2rem !important;
+  font-size: 1rem;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.palette-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+}
+.palette-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 11px;
+  font-size: 0.92rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.palette-item small {
+  color: var(--muted);
+}
+.palette-item.is-sel {
+  background: rgba(6, 182, 212, 0.13);
+}
+
+/* ---------------- Diálogo de confirmação -------------------------- */
+.confirm-box {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 1.4rem;
+  box-shadow: var(--shadow-pop);
+  animation: modal-in 0.24s var(--ease) both;
+}
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  box-shadow: 0 6px 16px -8px rgba(220, 38, 38, 0.7);
+}
+
+/* ---------------- KPI --------------------------------------------- */
+.kpi-card {
+  cursor: default;
+}
+
+/* menos movimento quando o sistema pede */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

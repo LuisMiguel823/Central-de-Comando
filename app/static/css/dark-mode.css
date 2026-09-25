@@ -8,32 +8,32 @@
  * ================================================================== */
 
 html.dark body {
-  background-color: #0f172a; /* slate-900 */
+  background-color: #0b1220;
   color: #e2e8f0; /* slate-200 */
 }
 
 /* ---- Fundo da página / superfícies ---- */
 html.dark .bg-slate-50 {
-  background-color: #0f172a;
+  background-color: #0b1220;
 }
 html.dark .bg-slate-100 {
-  background-color: #1e293b;
+  background-color: #1a2540;
 }
 html.dark .bg-white {
-  background-color: #1e293b; /* slate-800 */
+  background-color: #121b2f;
 }
 /* variantes translúcidas (cabeçalho sticky, barra de ações com backdrop-blur) */
 html.dark .bg-white\/95 {
-  background-color: rgba(30, 41, 59, 0.95);
+  background-color: rgba(18, 27, 47, 0.95);
 }
 html.dark .bg-white\/90 {
-  background-color: rgba(30, 41, 59, 0.9);
+  background-color: rgba(18, 27, 47, 0.9);
 }
 html.dark .bg-white\/80 {
-  background-color: rgba(30, 41, 59, 0.8);
+  background-color: rgba(18, 27, 47, 0.8);
 }
 html.dark .bg-white\/70 {
-  background-color: rgba(30, 41, 59, 0.7);
+  background-color: rgba(18, 27, 47, 0.7);
 }
 html.dark .bg-slate-800\/5,
 html.dark .bg-slate-900\/5 {
@@ -58,20 +58,20 @@ html.dark .text-slate-400 {
 html.dark .border-slate-100,
 html.dark .border-slate-200,
 html.dark .border-slate-300 {
-  border-color: #334155;
+  border-color: #1f2b45;
 }
 html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
 html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
-  border-color: #334155;
+  border-color: #1f2b45;
 }
 html.dark .ring-slate-200 {
-  --tw-ring-color: #334155;
+  --tw-ring-color: #1f2b45;
 }
 
 /* ---- Hover de linhas / superfícies suaves ---- */
 html.dark .hover\:bg-slate-50:hover,
 html.dark .hover\:bg-slate-100:hover {
-  background-color: #263449;
+  background-color: #182339;
 }
 
 /* ================================================================== *
@@ -170,15 +170,15 @@ html.dark .text-blue-600 {
 
 /* slate badge */
 html.dark .bg-slate-200 {
-  background-color: #334155;
+  background-color: #26334f;
 }
 
 /* ---- Inputs ---- */
 html.dark input,
 html.dark select,
 html.dark textarea {
-  background-color: #0f172a;
-  border-color: #334155;
+  background-color: #0d1526;
+  border-color: #1f2b45;
   color: #e2e8f0;
 }
 html.dark input::placeholder,
