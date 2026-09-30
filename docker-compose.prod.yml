@@ -38,3 +38,15 @@ services:
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD}
     ports:
       - "9137:8000"
+    volumes:
+      # Sem isso, toda vez que o Portainer recria o container (ex.: ao
+      # atualizar uma variável de ambiente da stack) a Central gera uma
+      # chave RSA de assinatura NOVA — mas o "kid" exposto no JWKS continua
+      # sempre o mesmo texto fixo (central-comando-key-1). Quem cacheia o
+      # JWKS do lado do sistema satélite (ex.: Regula RPPS) passa a rejeitar
+      # todo token novo, achando que é a MESMA chave de antes. Com o volume,
+      # a chave é criada uma vez e persiste pra sempre entre recriações.
+      - central_comando_keys:/code/keys
+
+volumes:
+  central_comando_keys:

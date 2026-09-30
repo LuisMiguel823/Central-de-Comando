@@ -62,3 +62,36 @@ def test_jwks(client):
 def test_audit_recorded_on_login(admin_client):
     r = admin_client.get("/auditoria")
     assert "auth.login" in r.text
+
+
+def test_status_page_public_view_hides_infra_details(client):
+    # sem login de propósito: se o banco cair, o login também cai, e essa
+    # página tem que continuar dando pra ver mesmo assim — mas sem a chave,
+    # não pode vazar host/usuário/erro do driver pra qualquer visitante.
+    r = client.get("/status")
+    assert r.status_code == 200
+    assert "Banco de dados OK" in r.text
+    from app.config import settings
+
+    assert settings.db_user not in r.text
+    assert settings.db_host not in r.text
+    assert f":{settings.db_password}@" not in r.text
+
+
+def test_status_page_with_key_shows_target_but_never_password(client):
+    from app.config import settings
+    from app.main import _status_key
+
+    r = client.get(f"/status?key={_status_key()}")
+    assert r.status_code == 200
+    expected_target = f"{settings.db_user}@{settings.db_host}:{settings.db_port}/{settings.db_name}"
+    assert expected_target in r.text
+    assert f":{settings.db_password}@" not in r.text
+
+
+def test_status_page_rejects_wrong_key(client):
+    from app.config import settings
+
+    r = client.get("/status?key=chave-errada")
+    assert r.status_code == 200
+    assert settings.db_host not in r.text

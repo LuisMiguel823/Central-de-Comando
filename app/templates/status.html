@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Status · {{ app_name }}</title>
+    <link rel="icon" href="/static/favicon.ico" sizes="any" />
+    <script>
+      (function () {
+        try {
+          var s = localStorage.getItem("cc-theme");
+          var dark = s === "dark" || (!s && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) document.documentElement.classList.add("dark");
+        } catch (e) {}
+      })();
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: "class" };</script>
+    <link rel="stylesheet" href="/static/css/app.css" />
+    <link rel="stylesheet" href="/static/css/dark-mode.css" />
+    <meta http-equiv="refresh" content="15" />
+  </head>
+  <body class="bg-slate-50 text-slate-700 antialiased" style="font-family: Inter, ui-sans-serif, system-ui, sans-serif">
+    <div class="mx-auto max-w-2xl px-6 py-14">
+      <div class="mb-8 flex items-center gap-2.5">
+        <img src="/static/img/logo-npi.png" alt="{{ app_name }}" class="h-9 w-9" />
+        <span class="text-lg font-semibold text-slate-800">{{ app_name }}</span>
+        <span class="ml-auto text-xs text-slate-400">atualiza a cada 15s</span>
+      </div>
+
+      <div class="rounded-2xl border border-slate-100 bg-white p-6">
+        <div class="flex items-center gap-3">
+          {% if db_ok %}
+          <span class="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-100 text-emerald-600">
+            <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7" /></svg>
+          </span>
+          <div>
+            <h1 class="text-lg font-semibold text-slate-800">Banco de dados OK</h1>
+            <p class="text-sm text-slate-500">Respondeu em {{ db_ms }}ms</p>
+          </div>
+          {% else %}
+          <span class="grid h-11 w-11 place-items-center rounded-2xl bg-red-100 text-red-600">
+            <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /></svg>
+          </span>
+          <div>
+            <h1 class="text-lg font-semibold text-slate-800">Não consigo falar com o banco</h1>
+            <p class="text-sm text-slate-500">Falhou em {{ db_ms }}ms</p>
+          </div>
+          {% endif %}
+        </div>
+
+        {% if detailed %}
+        <div class="mt-5 space-y-3 border-t border-slate-100 pt-5 text-sm">
+          <div class="flex items-center justify-between gap-4">
+            <span class="text-slate-500">Alvo (sem a senha)</span>
+            <span class="font-mono text-xs text-slate-600">{{ db_target }}</span>
+          </div>
+
+          {% if not db_ok %}
+          <div>
+            <p class="mb-1 text-slate-500">Erro reportado pelo driver do banco</p>
+            <pre class="overflow-x-auto rounded-xl bg-slate-50 p-3 text-xs text-red-600" style="white-space: pre-wrap">{{ db_detail }}</pre>
+            <p class="mt-2 text-xs text-slate-400">
+              "Access denied" quase sempre é usuário/senha errados (ex.: senha trocada no banco mas não atualizada
+              na variável DB_PASSWORD do Portainer). "Too many connections" é limite do servidor. Timeout longo é
+              rede/firewall até o banco.
+            </p>
+          </div>
+          {% endif %}
+
+          {% if db_ok %}
+          <div class="flex items-center justify-between gap-4">
+            <span class="text-slate-500">Migration aplicada</span>
+            <span class="font-mono text-xs {{ 'text-emerald-600' if migration_ok else 'text-amber-600' }}">
+              {{ current_migration or "?" }}
+              {% if migration_ok is sameas false %}(esperada: {{ expected_migration }}){% endif %}
+            </span>
+          </div>
+          {% endif %}
+
+          <div class="flex items-center justify-between gap-4">
+            <span class="text-slate-500">Versão do app</span>
+            <span class="font-mono text-xs text-slate-600">{{ app_version }}</span>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <p class="mt-5 text-center text-xs text-slate-400">
+        {% if detailed %}
+        Página pública e sem login (de propósito — se o banco cair, o login também cai).
+        {% else %}
+        Sem login, mostra só isso. O link com o detalhe (host, erro do driver) fica salvo à parte.
+        {% endif %}
+      </p>
+    </div>
+  </body>
+</html>
