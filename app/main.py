@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import hashlib
 import logging
-import secrets
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -82,26 +80,28 @@ def health():
 _EXPECTED_MIGRATION = "b7d2e41c9a3f"
 
 
-def _status_key() -> str:
-    """Chave só pra abrir o detalhe do /status (host/usuário/erro do driver).
-
-    Derivada do SECRET_KEY pra não precisar de mais uma variável de ambiente:
-    quem já tem acesso à configuração do servidor (única forma de ler o
-    SECRET_KEY de verdade) consegue calcular essa chave; ninguém mais.
-    """
-    return hashlib.sha256(f"{settings.secret_key}:status".encode()).hexdigest()[:16]
-
-
 @app.get("/status", include_in_schema=False)
-def status_page(request: Request, db: Session = Depends(get_db), key: str = ""):
+def status_page(request: Request, db: Session = Depends(get_db)):
     """
-    Diagnóstico público (sem login — o login também depende do banco, então uma
-    página que exige login não ajuda justo quando o banco está fora). Sem a
-    chave (?key=), mostra só "ok"/"com problema" — nada de host, usuário ou
-    mensagem do driver, pra não expor infraestrutura interna pra qualquer
-    visitante. Com a chave certa, mostra o detalhe completo.
+    Diagnóstico público (sem exigir login — o login também depende do banco,
+    então uma página que travasse nisso não ajudaria bem na hora que o banco
+    está fora). Um visitante qualquer só vê "ok"/"com problema": nada de host,
+    usuário ou mensagem do driver. O detalhe completo só aparece pra quem JÁ
+    está logado como administrador da Central — sem precisar de outra senha
+    ou link secreto pra guardar.
     """
-    detailed = key and secrets.compare_digest(key, _status_key())
+    from app.models import User
+
+    detailed = False
+    try:
+        uid = request.session.get("uid")
+        if uid:
+            admin = db.get(User, uid)
+            detailed = bool(admin and admin.is_active and admin.is_superuser)
+    except Exception:  # noqa: BLE001
+        # se essa checagem falhar (ex.: banco fora), cai pro modo público —
+        # é exatamente a hora em que essa página mais precisa continuar de pé.
+        detailed = False
 
     db_ok = False
     db_detail = None
@@ -126,7 +126,7 @@ def status_page(request: Request, db: Session = Depends(get_db), key: str = ""):
         db_ms = round((time.perf_counter() - t0) * 1000)
         if detailed:
             # mensagem do driver ajuda a diagnosticar (usuário/host errado,
-            # acesso negado, limite de conexões); só quem tem a chave vê.
+            # acesso negado, limite de conexões); só o admin logado vê.
             db_detail = f"{type(exc).__name__}: {str(exc)[:300]}"
 
     db_target = (
