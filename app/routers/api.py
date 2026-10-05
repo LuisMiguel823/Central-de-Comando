@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import re
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core import audit
 from app.core.deps import get_api_user, require_api_admin
 from app.core.security import decode_jwt, utcnow, verify_password
 from app.database import get_db
-from app.models import Application, Client, OAuthToken, User
+from app.models import Application, Client, OAuthToken, Permission, User
 from app.services.permissions import permissions_for
 
 router = APIRouter(prefix="/api/v1", tags=["api"])
@@ -132,6 +135,86 @@ def introspect(
         "iat": payload["iat"],
         "permissions": permissions_for(db, user, app),
         "is_superuser": user.is_superuser,
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Auto-cadastro do catálogo de permissões — o próprio app satélite (ou a IA do
+# dono dele) manda a lista levantada no código, autenticando com client_id/secret.
+# Só cria/atualiza: NUNCA apaga, pra um sync errado não revogar acesso em produção.
+# --------------------------------------------------------------------------- #
+_PERM_CODE_RE = re.compile(r"^[a-z0-9][a-z0-9_.\-]{0,99}$")
+_MAX_SYNC_PERMISSIONS = 300
+
+
+class PermissionIn(BaseModel):
+    code: str
+    name: str | None = None
+    description: str | None = None
+
+
+class PermissionSyncIn(BaseModel):
+    client_id: str
+    client_secret: str
+    permissions: list[PermissionIn]
+
+
+@router.post("/apps/permissions/sync")
+def sync_permissions(
+    body: PermissionSyncIn,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    app = db.scalar(select(Application).where(Application.oauth_client_id == body.client_id))
+    if (
+        app is None
+        or not app.is_active
+        or not verify_password(body.client_secret, app.oauth_client_secret_hash)
+    ):
+        raise HTTPException(status_code=401, detail="client inválido.")
+    if len(body.permissions) > _MAX_SYNC_PERMISSIONS:
+        raise HTTPException(
+            status_code=400, detail=f"Máximo de {_MAX_SYNC_PERMISSIONS} permissões por chamada."
+        )
+
+    wanted: dict[str, PermissionIn] = {}
+    for item in body.permissions:
+        code = item.code.strip().lower()
+        if not _PERM_CODE_RE.match(code):
+            raise HTTPException(
+                status_code=400,
+                detail=f"code inválido: '{item.code}'. Use minúsculas, números, '.', '_' ou '-' (ex.: contratos.assinar).",
+            )
+        wanted[code] = item
+
+    existing = {p.code: p for p in app.permissions}
+    created = updated = 0
+    for code, item in wanted.items():
+        name = (item.name or "").strip()[:200] or code
+        description = (item.description or "").strip()[:500] or None
+        current = existing.get(code)
+        if current is None:
+            db.add(Permission(application_id=app.id, code=code, name=name, description=description))
+            created += 1
+        elif current.name != name or current.description != description:
+            current.name = name
+            current.description = description
+            updated += 1
+
+    if created or updated:
+        audit.record(
+            db, "permission.sync_api", actor_label=f"app:{app.slug}", target_type="application",
+            target_id=app.id,
+            description=f"Sistema {app.slug} cadastrou permissões via API: +{created} / ~{updated}",
+            request=request, meta={"created": created, "updated": updated}, commit=False,
+        )
+    db.commit()
+    return {
+        "app": app.slug,
+        "created": created,
+        "updated": updated,
+        "unchanged": len(wanted) - created - updated,
+        "total_in_catalog": len(existing) + created,
     }
 
 

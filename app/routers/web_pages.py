@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+import unicodedata
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
@@ -13,6 +15,7 @@ from app.core.prompts import (
     DISCOVERY_PROMPT,
     IMPLEMENTATION_PROMPT,
     TENANT_PROVISIONING_ADDENDUM,
+    build_integration_package,
 )
 from app.core.deps import require_web_admin, require_web_user
 from app.core.security import (
@@ -48,6 +51,17 @@ router = APIRouter(include_in_schema=False)
 def _back(request: Request, fallback: str) -> str:
     ref = request.headers.get("referer")
     return ref or fallback
+
+
+def _unique_app_slug(db: Session, name: str) -> str:
+    """Slug a partir do nome ('Sistema Protocolo' -> 'sistema-protocolo'), sem colidir."""
+    base = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    base = re.sub(r"[^a-z0-9]+", "-", base.lower()).strip("-")[:60] or "sistema"
+    slug, n = base, 2
+    while db.scalar(select(Application.id).where(Application.slug == slug)) is not None:
+        slug = f"{base}-{n}"
+        n += 1
+    return slug
 
 
 def _password_states(db: Session, users: list[User]) -> dict[int, dict]:
@@ -713,18 +727,23 @@ def apps_list(
 def apps_create(
     request: Request,
     name: str = Form(...),
-    slug: str = Form(...),
+    slug: str = Form(""),
     description: str = Form(""),
     base_url: str = Form(""),
     redirect_uris: str = Form(""),
     client_id: str = Form(""),
     allowed_scopes: str = Form("openid profile email"),
+    multi_client: str = Form(""),
     db: Session = Depends(get_db),
     user: User = Depends(require_web_admin),
 ):
-    slug = slug.strip().lower()
-    if db.scalar(select(Application).where(Application.slug == slug)):
-        raise HTTPException(status_code=400, detail="slug já em uso.")
+    # Cadastro rápido: só nome + callback bastam; o slug sai do nome.
+    if slug.strip():
+        slug = slug.strip().lower()
+        if db.scalar(select(Application).where(Application.slug == slug)):
+            raise HTTPException(status_code=400, detail="slug já em uso.")
+    else:
+        slug = _unique_app_slug(db, name)
     secret = generate_client_secret()
     app = Application(
         name=name.strip(),
@@ -746,8 +765,10 @@ def apps_create(
         "slug": app.slug,
         "client_id": app.oauth_client_id,
         "client_secret": secret,
+        "multi_client": multi_client == "on",
     }
-    return RedirectResponse("/apps", status_code=status.HTTP_302_FOUND)
+    # Vai direto pra página do sistema, onde o pacote de integração já está pronto.
+    return RedirectResponse(f"/apps/{app.slug}", status_code=status.HTTP_302_FOUND)
 
 
 @router.post("/apps/{app_id}/editar")
@@ -1058,6 +1079,16 @@ def app_detail(
     clients_by_id = {c.id: c for c in clients}
 
     new_secret = request.session.pop("new_app_secret", None)
+    package = None
+    if new_secret and new_secret.get("slug") == app.slug:
+        package = build_integration_package(
+            name=app.name,
+            client_id=new_secret["client_id"],
+            client_secret=new_secret["client_secret"],
+            central_url=settings.base_url,
+            redirect_uris=app.redirect_uris,
+            multi_client=bool(new_secret.get("multi_client")),
+        )
     return render(
         request,
         "apps/detail.html",
@@ -1071,6 +1102,7 @@ def app_detail(
             "granted_pairs": granted_pairs,
             "granted_count": granted_count,
             "new_secret": new_secret,
+            "package": package,
         },
     )
 

@@ -157,6 +157,88 @@ autorização que ficou sem permissão correspondente; (c) qualquer coisa que vo
 não teve certeza e decidiu não mexer.
 """
 
+INTEGRATION_PACKAGE = """\
+Preciso integrar o sistema "{NAME}" ao APP CENTRAL (login único + permissões).
+Siga os passos na ordem. Tudo que você precisa está nesta mensagem.
+
+DADOS DA INTEGRAÇÃO
+- client_id: {CLIENT_ID}
+- client_secret: {CLIENT_SECRET}   (guarde em variável de ambiente; NUNCA no código/repositório)
+- Endereço da Central: {BASE_URL_CENTRAL}
+- Discovery OIDC: {BASE_URL_CENTRAL}/.well-known/openid-configuration
+- Rota de callback do login (redirect URI): {REDIRECT_URIS}
+
+PASSO 1 — INVENTÁRIO DE PERMISSÕES
+Varra o código e liste TODA checagem de autorização real (decorator, middleware,
+if de role/permissão, guard de rota, flag booleana por usuário). Dê a cada uma um
+code estável no formato "recurso.acao" (ex.: "contratos.assinar"), mantendo a
+convenção que o código já usa, se houver. Não invente permissões que não existem
+no código. Se o sistema não controla nada por usuário, a lista fica vazia.
+
+PASSO 2 — CADASTRAR AS PERMISSÕES NA CENTRAL (automático, uma chamada)
+Envie a lista do passo 1 para a Central. Pode ser repetido quantas vezes quiser:
+só cria ou atualiza, nunca apaga nada.
+
+curl -X POST {BASE_URL_CENTRAL}/api/v1/apps/permissions/sync \\
+  -H "Content-Type: application/json" \\
+  -d '{"client_id": "{CLIENT_ID}", "client_secret": "<o client_secret acima>",
+       "permissions": [
+         {"code": "contratos.assinar", "name": "Assinar contratos", "description": "Libera a assinatura"}
+       ]}'
+
+A resposta traz quantas permissões foram criadas/atualizadas. Depois disso o
+administrador da Central já consegue conceder cada permissão aos usuários.
+
+PASSO 3 — LOGIN E CONTROLE DE ACESSO VIA CENTRAL
+{IMPLEMENTATION}
+{TENANT}
+No final, devolva um resumo objetivo com: (a) a lista de permissões cadastradas
+no passo 2; (b) se já existia integração prévia e o que foi completado vs.
+construído do zero; (c) qualquer checagem que ficou sem permissão correspondente;
+(d) qualquer coisa de que você não teve certeza e decidiu não mexer.
+"""
+
+
+def build_integration_package(
+    *,
+    name: str,
+    client_id: str,
+    client_secret: str,
+    central_url: str,
+    redirect_uris: str,
+    multi_client: bool,
+) -> str:
+    """Mensagem única, já preenchida, que o admin manda ao dono do sistema novo."""
+    central = central_url.rstrip("/")
+    implementation = (
+        IMPLEMENTATION_PROMPT.replace("{CLIENT_ID}", client_id)
+        .replace("{CLIENT_SECRET}", client_secret)
+        .replace("{BASE_URL_CENTRAL}", central)
+        .replace(
+            "use exatamente os mesmos codes já\n   levantados no inventário anterior",
+            "use exatamente os mesmos codes do\n   passo 1 (já cadastrados no passo 2)",
+        )
+    )
+    tenant = (
+        "\n" + TENANT_PROVISIONING_ADDENDUM.replace("{BASE_URL_CENTRAL}", central)
+        if multi_client
+        else ""
+    )
+    # Substituição simples (não .format): o texto tem chaves de JSON.
+    out = INTEGRATION_PACKAGE
+    for key, value in {
+        "{IMPLEMENTATION}": implementation,
+        "{TENANT}": tenant,
+        "{NAME}": name,
+        "{CLIENT_ID}": client_id,
+        "{CLIENT_SECRET}": client_secret,
+        "{BASE_URL_CENTRAL}": central,
+        "{REDIRECT_URIS}": redirect_uris.strip().replace("\n", " , ") or "(a definir)",
+    }.items():
+        out = out.replace(key, value)
+    return out
+
+
 # Complemento opcional — cole junto com o IMPLEMENTATION_PROMPT quando o
 # sistema satélite for multi-tenant (precisa saber a QUAL cliente/tenant
 # vincular o usuário no primeiro login) e você quer que o cadastro local

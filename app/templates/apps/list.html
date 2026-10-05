@@ -75,15 +75,14 @@ subheading %}
 <div id="modal-new" class="modal-overlay fixed inset-0 z-40 hidden items-center justify-center p-4">
   <div class="w-full max-w-lg rounded-2xl border border-slate-100 bg-white p-6">
     <h3 class="text-lg font-semibold text-slate-800">Novo sistema</h3>
-    <form method="post" action="/apps" class="mt-4 grid gap-3 sm:grid-cols-2">
-      {{ f.field("name", "Nome", required=True) }}
-      {{ f.field("slug", "Slug (ex.: protocolo-digital)", required=True) }}
-      {{ f.field("base_url", "URL base", span=True, placeholder="https://sistema.exemplo.gov.br") }}
-      {{ f.textarea_field("redirect_uris", "Redirect URIs (uma por linha)", placeholder="https://sistema.exemplo.gov.br/auth/callback") }}
-      {{ f.field("allowed_scopes", "Scopes", value="openid profile email", span=True) }}
-      {{ client_select(clients) }}
-      {{ f.textarea_field("description", "Descrição", rows=2) }}
-      <div class="sm:col-span-2 mt-2 flex justify-end gap-2">
+    <p class="mt-1 text-xs text-slate-500">
+      Só o nome e o endereço de retorno do login. Ao criar, você recebe uma mensagem pronta para mandar ao dono do sistema.
+    </p>
+    <form method="post" action="/apps" class="mt-4 grid gap-3">
+      {{ f.field("name", "Nome do sistema", required=True, placeholder="Ex.: Protocolo Digital") }}
+      {{ f.textarea_field("redirect_uris", "Endereço de retorno do login (callback) — um por linha", rows=2, placeholder="https://sistema.exemplo.gov.br/auth/central/callback") }}
+      {{ f.checkbox("multi_client", "Atende vários clientes (a Central envia o client_code)") }}
+      <div class="mt-2 flex justify-end gap-2">
         <button type="button" data-close-modal="modal-new" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600">Cancelar</button>
         <button class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">Criar sistema</button>
       </div>

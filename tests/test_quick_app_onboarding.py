@@ -1,0 +1,118 @@
+from __future__ import annotations
+
+import re
+
+from fastapi.testclient import TestClient
+from sqlalchemy import select
+
+from app.database import SessionLocal
+from app.main import app
+from app.models import Application, AuditEvent, Permission
+
+
+def _create(admin_client, name="Sistema Teste Rapido", **extra):
+    data = {"name": name, "redirect_uris": "https://x.example.com/auth/central/callback", **extra}
+    return admin_client.post("/apps", data=data, follow_redirects=False)
+
+
+def _package(page_html: str) -> str:
+    m = re.search(r'<textarea id="integration-package"[^>]*>(.*?)</textarea>', page_html, re.S)
+    assert m, "pacote de integração não apareceu"
+    return m.group(1).replace("&#34;", '"').replace("&#39;", "'").replace("&lt;", "<").replace("&gt;", ">")
+
+
+def test_quick_create_generates_slug_and_shows_package(admin_client):
+    r = _create(admin_client, name="Sistema Teste Rápido")
+    assert r.status_code == 302
+    slug = r.headers["location"].rsplit("/", 1)[1]
+    assert slug == "sistema-teste-rapido"
+
+    page = admin_client.get(r.headers["location"])
+    assert page.status_code == 200
+    pkg = _package(page.text)
+    db = SessionLocal()
+    try:
+        a = db.scalar(select(Application).where(Application.slug == slug))
+        assert a.oauth_client_id in pkg
+        assert "client_secret: " in pkg and "{CLIENT_SECRET}" not in pkg
+        assert "/api/v1/apps/permissions/sync" in pkg
+        assert "https://x.example.com/auth/central/callback" in pkg
+        assert "{BASE_URL_CENTRAL}" not in pkg and "{NAME}" not in pkg
+    finally:
+        db.close()
+
+    # o segredo aparece uma única vez
+    assert "integration-package" not in admin_client.get(r.headers["location"]).text
+
+    # segundo sistema com o mesmo nome ganha sufixo
+    r2 = _create(admin_client, name="Sistema Teste Rápido")
+    assert r2.headers["location"].endswith("/sistema-teste-rapido-2")
+
+
+def test_multi_client_flag_adds_tenant_instructions(admin_client):
+    plain = _create(admin_client, name="Sistema Plain Um")
+    pkg_plain = _package(admin_client.get(plain.headers["location"]).text)
+    multi = _create(admin_client, name="Sistema Multi Um", multi_client="on")
+    pkg_multi = _package(admin_client.get(multi.headers["location"]).text)
+    assert "NUNCA recuse o login" not in pkg_plain
+    assert "NUNCA recuse o login" in pkg_multi
+
+
+def _creds(admin_client, name):
+    r = _create(admin_client, name=name)
+    pkg = _package(admin_client.get(r.headers["location"]).text)
+    cid = re.search(r"client_id: (\S+)", pkg).group(1)
+    secret = re.search(r"client_secret: (\S+)", pkg).group(1)
+    return r.headers["location"].rsplit("/", 1)[1], cid, secret
+
+
+def test_sync_permissions_creates_updates_and_never_deletes(admin_client):
+    slug, cid, secret = _creds(admin_client, "Sistema Sync Um")
+    anon = TestClient(app)
+
+    body = {
+        "client_id": cid,
+        "client_secret": secret,
+        "permissions": [
+            {"code": "contratos.assinar", "name": "Assinar contratos", "description": "Libera"},
+            {"code": "Contratos.Ver"},  # normaliza p/ minúsculas; nome cai no code
+        ],
+    }
+    r = anon.post("/api/v1/apps/permissions/sync", json=body)
+    assert r.status_code == 200, r.text
+    assert r.json()["created"] == 2 and r.json()["updated"] == 0
+
+    # idempotente
+    again = anon.post("/api/v1/apps/permissions/sync", json=body).json()
+    assert again["created"] == 0 and again["updated"] == 0 and again["unchanged"] == 2
+
+    # atualiza nome; e uma chamada com lista menor NÃO apaga a outra
+    body["permissions"] = [{"code": "contratos.assinar", "name": "Assinar contrato digital"}]
+    upd = anon.post("/api/v1/apps/permissions/sync", json=body).json()
+    assert upd["updated"] == 1 and upd["total_in_catalog"] == 2
+
+    db = SessionLocal()
+    try:
+        a = db.scalar(select(Application).where(Application.slug == slug))
+        codes = {p.code: p.name for p in db.scalars(select(Permission).where(Permission.application_id == a.id))}
+        assert codes == {"contratos.assinar": "Assinar contrato digital", "contratos.ver": "contratos.ver"}
+        assert "permission.sync_api" in db.scalars(select(AuditEvent.action)).all()
+    finally:
+        db.close()
+
+
+def test_sync_permissions_rejects_bad_credentials_and_codes(admin_client):
+    slug, cid, secret = _creds(admin_client, "Sistema Sync Dois")
+    anon = TestClient(app)
+    good = [{"code": "a.b"}]
+    assert anon.post("/api/v1/apps/permissions/sync", json={"client_id": cid, "client_secret": "errado", "permissions": good}).status_code == 401
+    assert anon.post("/api/v1/apps/permissions/sync", json={"client_id": "nao-existe", "client_secret": secret, "permissions": good}).status_code == 401
+    bad = anon.post("/api/v1/apps/permissions/sync", json={"client_id": cid, "client_secret": secret, "permissions": [{"code": "tem espaço"}]})
+    assert bad.status_code == 400
+    # nada foi criado pelos pedidos rejeitados
+    db = SessionLocal()
+    try:
+        a = db.scalar(select(Application).where(Application.slug == slug))
+        assert db.scalars(select(Permission).where(Permission.application_id == a.id)).first() is None
+    finally:
+        db.close()
