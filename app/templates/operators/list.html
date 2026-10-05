@@ -1,7 +1,9 @@
 {% extends "base.html" %} {% import "partials/forms.html" as f %} {% block title
 %}Usuários{% endblock %} {% block heading %}Usuários{% endblock %} {% block
 subheading %}
-<p class="text-xs text-slate-500">{{ operators | length }} cadastrado(s)</p>
+<p class="text-sm text-slate-500">
+  {{ counts.todos }} pessoa{{ "" if counts.todos == 1 else "s" }} com acesso à plataforma — abra uma para ver senha, dados e sistemas
+</p>
 {% endblock %} {% block content %}
 
 {% macro client_select(clients, selected="") %}
@@ -16,22 +18,10 @@ subheading %}
 </div>
 {% endmacro %}
 
-<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-  <form method="get" class="flex gap-2">
-    <input name="q" value="{{ q }}" placeholder="Buscar por nome, usuário ou e-mail"
-      class="w-72 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
-    <button class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">Buscar</button>
-  </form>
-  {% if user.is_superuser %}
-  <div class="flex gap-2">
-    <a href="/operadores/importar" class="rounded-lg border border-brand-200 bg-brand-100 px-4 py-2 text-sm font-semibold text-brand-700 hover:brightness-105">Importar em massa</a>
-    <button data-open-modal="modal-new" class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">+ Novo usuário</button>
-  </div>
-  {% endif %}
-</div>
+{% set filters = [("todos", "Todos"), ("ativos", "Ativos"), ("pendentes", "Pendentes"), ("semsenha", "Sem senha"), ("admins", "Admins")] %}
 
 {% if import_summary %}
-<div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-100 p-4 text-sm text-emerald-700">
+<div class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-100 p-4 text-sm text-emerald-700">
   <p class="font-semibold">
     Importação de "{{ import_summary.app_slug }}" concluída: {{ import_summary.users_created }} usuário(s) novo(s),
     {{ import_summary.users_updated }} atualizado(s), {{ import_summary.grants_added }} permissão(ões) concedida(s),
@@ -40,67 +30,81 @@ subheading %}
 </div>
 {% endif %}
 
-<div class="overflow-x-auto rounded-2xl border border-slate-100 bg-white">
-  <table class="min-w-full divide-y divide-slate-100 text-sm">
-    <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-      <tr>
-        <th class="px-5 py-3">Usuário</th>
-        <th class="px-5 py-3">Vínculo</th>
-        <th class="px-5 py-3">Acesso</th>
-        <th class="px-5 py-3">Último login</th>
-        <th class="px-5 py-3">Status</th>
-        <th class="px-5 py-3"></th>
-      </tr>
-    </thead>
-    <tbody class="divide-y divide-slate-100">
-      {% for o in operators %}
-      <tr class="hover:bg-slate-50">
-        <td class="px-5 py-3">
-          <a href="/operadores/{{ o.id }}" class="font-medium text-slate-700 hover:text-brand-700">{{ o.full_name }}</a>
-          <div class="text-xs text-slate-400">{{ o.username }} · {{ o.email }}</div>
-        </td>
-        <td class="px-5 py-3 text-slate-600">
-          {{ o.client.code if o.client else "Interno" }}
-        </td>
-        <td class="px-5 py-3">
-          <div class="flex flex-wrap gap-1">
-            {% if o.is_superuser %}<span class="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">Admin</span>{% endif %}
-            {% if o.govbr_sub %}<span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">gov.br</span>{% endif %}
-            {% if o.account_level %}<span class="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">Login Único N{{ o.account_level }}</span>{% endif %}
-            {% set pw = pw_states[o.id] %}
-            {% if pw.key == "set" %}<span class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">senha</span>
-            {% elif pw.key == "pending" %}<span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700" title="Expira em {{ pw.expires.strftime('%d/%m/%Y %H:%M') }}">link enviado</span>
-            {% elif pw.key == "expired" %}<span class="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">link expirado</span>
-            {% elif not o.govbr_sub %}<span class="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">sem senha</span>{% endif %}
-          </div>
-          {% if o.cpf %}<div class="mt-0.5 font-mono text-[11px] text-slate-400">CPF {{ o.cpf }}</div>{% endif %}
-        </td>
-        <td class="px-5 py-3 text-slate-500">
-          {{ o.last_login_at.strftime("%d/%m/%Y %H:%M") if o.last_login_at else "—" }}
-        </td>
-        <td class="px-5 py-3">
-          {% if o.is_active %}
-          <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">Ativo</span>
-          {% else %}
-          <span class="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">Pendente</span>
-          {% endif %}
-        </td>
-        <td class="px-5 py-3 text-right">
-          {% if not o.has_password and not o.govbr_sub %}
-          <form method="post" action="/operadores/{{ o.id }}/link-senha" class="mr-3 inline"
-            data-confirm="Gerar um link novo de definição de senha? O link anterior deste usuário deixa de funcionar.">
-            <button class="text-xs font-medium text-brand-600 hover:underline">Gerar link</button>
-          </form>
-          {% endif %}
-          <a href="/operadores/{{ o.id }}" class="text-xs font-medium text-brand-600 hover:underline">Gerenciar</a>
-        </td>
-      </tr>
-      {% else %}
-      <tr><td colspan="6" class="px-5 py-10 text-center text-slate-400">Nenhum usuário.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <form method="get" class="search-field w-full sm:w-80">
+    <input type="hidden" name="f" value="{{ flt }}" />
+    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+    <input name="q" value="{{ q }}" placeholder="Buscar por nome, usuário ou e-mail"
+      class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none placeholder:text-slate-400" />
+  </form>
+  {% if user.is_superuser %}
+  <div class="flex gap-2">
+    <a href="/operadores/importar" class="btn-soft">Importar em massa</a>
+    <button data-open-modal="modal-new" class="btn-primary rounded-xl px-4 py-2 text-sm font-semibold">+ Novo usuário</button>
+  </div>
+  {% endif %}
 </div>
+
+<nav class="filters mb-6" aria-label="Filtrar usuários">
+  {% for key, label in filters %}
+  <a href="/operadores?f={{ key }}{{ '&q=' ~ (q | urlencode) if q }}" class="filter-pill {{ 'is-on' if flt == key }}">
+    {{ label }} <b>{{ counts[key] }}</b>
+  </a>
+  {% endfor %}
+</nav>
+
+{% if operators %}
+<div class="people-grid">
+  {% for o in operators %}
+  {% set pw = pw_states[o.id] %}
+  <article class="person-card {{ '' if o.is_active else 'is-off' }}" style="--hue: {{ o.username | module_hue }}">
+    <div class="person-body">
+      <div class="flex items-start gap-3.5">
+        <span class="avatar">{{ o.full_name | initials }}<span class="dot {{ '' if o.is_active else 'is-off' }}" title="{{ 'Ativo' if o.is_active else 'Pendente' }}"></span></span>
+        <div class="min-w-0 flex-1">
+          <a href="/operadores/{{ o.id }}" class="person-name block truncate">{{ o.full_name }}</a>
+          <p class="truncate text-[13px] text-slate-500">{{ o.email }}</p>
+          <p class="truncate text-xs text-slate-400">@{{ o.username }}</p>
+        </div>
+      </div>
+
+      <div class="mt-3.5 flex flex-wrap gap-1.5">
+        {% if o.is_superuser %}<span class="chip" style="--hue: 139 92 246">Admin</span>{% endif %}
+        <span class="chip" style="--hue: {{ '245 158 11' if o.client else '100 116 108' }}">{{ o.client.code if o.client else "Interno" }}</span>
+        {% if pw.key == "set" %}<span class="chip" style="--hue: 16 178 122"><i></i>Senha definida</span>
+        {% elif pw.key == "pending" %}<span class="chip" style="--hue: 245 158 11" title="Expira em {{ pw.expires.strftime('%d/%m/%Y %H:%M') }}"><i></i>Link enviado</span>
+        {% elif pw.key == "expired" %}<span class="chip" style="--hue: 239 68 68"><i></i>Link expirado</span>
+        {% elif not o.govbr_sub %}<span class="chip" style="--hue: 249 115 22"><i></i>Sem senha</span>{% endif %}
+        {% if o.govbr_sub %}<span class="chip" style="--hue: 59 130 246">gov.br</span>{% endif %}
+        {% if o.account_level %}<span class="chip" style="--hue: 20 184 166">Login Único N{{ o.account_level }}</span>{% endif %}
+      </div>
+    </div>
+
+    <div class="person-foot">
+      <div class="pf-info">
+        {% if not o.is_active %}Aguardando liberação{% elif o.last_login_at %}Último acesso {{ o.last_login_at | ago(utc_now) }}{% else %}Nunca entrou{% endif %}
+      </div>
+      <div class="pf-actions">
+        {% if user.is_superuser and pw.key != "set" and not o.govbr_sub %}
+        <form method="post" action="/operadores/{{ o.id }}/link-senha"
+          data-confirm="Gerar um link novo de definição de senha? O link anterior deste usuário deixa de funcionar.">
+          <button class="btn-tiny" style="--hue: 245 158 11">Gerar link</button>
+        </form>
+        {% endif %}
+        <a href="/operadores/{{ o.id }}" class="btn-tiny">Gerenciar &rarr;</a>
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <svg class="h-10 w-10 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /></svg>
+  <p class="font-semibold text-slate-600">Nenhum usuário encontrado</p>
+  <p class="text-sm">Tente outro filtro ou outra busca.</p>
+  <a href="/operadores" class="btn-soft mt-2">Limpar filtros</a>
+</div>
+{% endif %}
 
 {% if user.is_superuser %}
 <div id="modal-new" class="modal-overlay fixed inset-0 z-40 hidden items-center justify-center p-4">
@@ -123,6 +127,5 @@ subheading %}
     </form>
   </div>
 </div>
-
 {% endif %}
 {% endblock %}

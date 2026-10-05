@@ -24,7 +24,7 @@ def test_list_shows_password_state_and_manage_link(admin_client):
     r = admin_client.get("/operadores")
     assert r.status_code == 200
     assert f'href="/operadores/{uid}"' in r.text
-    assert "link enviado" in r.text  # importação já gerou o link pendente
+    assert "Link enviado" in r.text  # importação já gerou o link pendente
 
 
 def test_detail_tabs_render(admin_client):

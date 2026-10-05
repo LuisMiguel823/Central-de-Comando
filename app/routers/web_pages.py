@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
@@ -11,12 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.config import settings
 from app.core import audit
-from app.core.prompts import (
-    DISCOVERY_PROMPT,
-    IMPLEMENTATION_PROMPT,
-    TENANT_PROVISIONING_ADDENDUM,
-    build_integration_package,
-)
+from app.core.prompts import build_integration_package
 from app.core.deps import require_web_admin, require_web_user
 from app.core.security import (
     generate_client_id,
@@ -38,7 +33,6 @@ from app.models import (
     UserAppPermission,
 )
 from app.services import (
-    app_import,
     oidc,
     operators_import,
     password_links,
@@ -164,95 +158,145 @@ def dashboard(
     if not user.is_superuser:
         return _my_systems(request, db, user)
 
-    today = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    week_ago = utcnow() - timedelta(days=7)
+    return render(request, "dashboard.html", {"user": user, **_dashboard_data(db)})
 
-    kpis = [
+
+_WEEKDAYS_PT = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"]
+
+
+def _db_now(db: Session):
+    """Relógio do próprio banco: é ele quem carimba created_at, então 'hoje' e
+    'há 5 min' ficam certos mesmo se o fuso do banco não for UTC."""
+    now = db.scalar(select(func.now()))
+    if isinstance(now, str):  # sqlite devolve texto
+        now = datetime.fromisoformat(now)
+    return now
+
+
+def _dashboard_data(db: Session) -> dict:
+    now = _db_now(db)
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today - timedelta(days=6)
+
+    def count(stmt) -> int:
+        return int(db.scalar(stmt) or 0)
+
+    # ---- Sistemas ----------------------------------------------------------
+    apps = db.scalars(
+        select(Application).where(Application.is_active.is_(True)).order_by(Application.name)
+    ).all()
+    perm_counts = dict(
+        db.execute(
+            select(Permission.application_id, func.count(Permission.id)).group_by(
+                Permission.application_id
+            )
+        ).all()
+    )
+    user_counts = dict(
+        db.execute(
+            select(
+                UserAppPermission.application_id,
+                func.count(func.distinct(UserAppPermission.user_id)),
+            ).group_by(UserAppPermission.application_id)
+        ).all()
+    )
+    systems = [
         {
-            "label": "Usuários ativos",
-            "value": db.scalar(select(func.count(User.id)).where(User.is_active.is_(True))),
-            "hover": "hover:border-emerald-400",
-            "icon": "users",
-        },
-        {
-            "label": "Sistemas integrados",
-            "value": db.scalar(select(func.count(Application.id)).where(Application.is_active.is_(True))),
-            "hover": "hover:border-violet-400",
-            "icon": "grid",
-        },
-        {
-            "label": "Permissões concedidas",
-            "value": db.scalar(select(func.count(UserAppPermission.id))),
-            "hover": "hover:border-teal-400",
-            "icon": "key",
-        },
-        {
-            "label": "Logins hoje",
-            "value": db.scalar(
-                select(func.count(AuditEvent.id)).where(
-                    AuditEvent.action == "auth.login", AuditEvent.created_at >= today
-                )
-            ),
-            "hover": "hover:border-amber-400",
-            "icon": "login",
-        },
-        {
-            "label": "Logins com falha (7d)",
-            "value": db.scalar(
-                select(func.count(AuditEvent.id)).where(
-                    AuditEvent.action == "auth.login_failed",
-                    AuditEvent.created_at >= week_ago,
-                )
-            ),
-            "hover": "hover:border-red-400",
-            "icon": "alert",
-        },
-        {
-            "label": "Usuários pendentes",
-            "value": db.scalar(select(func.count(User.id)).where(User.is_active.is_(False))),
-            "hover": "hover:border-orange-400",
-            "icon": "clock",
-        },
-        {
-            "label": "Eventos (24h)",
-            "value": db.scalar(
-                select(func.count(AuditEvent.id)).where(
-                    AuditEvent.created_at >= utcnow() - timedelta(hours=24)
-                )
-            ),
-            "hover": "hover:border-blue-400",
-            "icon": "activity",
-        },
+            "app": a,
+            "permissions": perm_counts.get(a.id, 0),
+            "users": user_counts.get(a.id, 0),
+        }
+        for a in apps
     ]
+
+    # ---- Usuários ----------------------------------------------------------
+    users_active = count(select(func.count(User.id)).where(User.is_active.is_(True)))
+    users_pending = count(select(func.count(User.id)).where(User.is_active.is_(False)))
+    users_never = count(
+        select(func.count(User.id)).where(
+            User.is_active.is_(True), User.last_login_at.is_(None)
+        )
+    )
+    last_logins = db.scalars(
+        select(User)
+        .where(User.last_login_at.is_not(None))
+        .order_by(User.last_login_at.desc())
+        .limit(3)
+    ).all()
+
+    # ---- Acessos (7 dias) --------------------------------------------------
+    rows = db.execute(
+        select(func.date(AuditEvent.created_at), func.count(AuditEvent.id))
+        .where(AuditEvent.action == "auth.login", AuditEvent.created_at >= week_start)
+        .group_by(func.date(AuditEvent.created_at))
+    ).all()
+    by_day = {str(d)[:10]: n for d, n in rows}
+    days = []
+    for i in range(7):
+        day = week_start + timedelta(days=i)
+        days.append(
+            {
+                "label": _WEEKDAYS_PT[day.weekday()],
+                "date": day.strftime("%d/%m"),
+                "count": by_day.get(day.strftime("%Y-%m-%d"), 0),
+                "is_today": i == 6,
+            }
+        )
+    logins_today = days[-1]["count"]
+    logins_week = sum(d["count"] for d in days)
+    peak = max((d["count"] for d in days), default=0)
+    for d in days:
+        d["pct"] = round(d["count"] / peak * 100) if peak else 0
+
+    # ---- Segurança ---------------------------------------------------------
+    failed_week = count(
+        select(func.count(AuditEvent.id)).where(
+            AuditEvent.action == "auth.login_failed", AuditEvent.created_at >= week_start
+        )
+    )
+    failed_recent = db.scalars(
+        select(AuditEvent)
+        .options(selectinload(AuditEvent.actor))
+        .where(AuditEvent.action == "auth.login_failed")
+        .order_by(AuditEvent.created_at.desc())
+        .limit(4)
+    ).all()
+    if failed_week == 0:
+        security_level = "ok"
+    elif failed_week < 10:
+        security_level = "warn"
+    else:
+        security_level = "bad"
 
     recent = db.scalars(
         select(AuditEvent)
         .options(selectinload(AuditEvent.actor))
         .order_by(AuditEvent.created_at.desc())
-        .limit(12)
+        .limit(9)
     ).all()
 
-    systems = db.execute(
-        select(Application, func.count(Permission.id))
-        .outerjoin(Permission, Permission.application_id == Application.id)
-        .group_by(Application.id)
-        .order_by(Application.name)
-        .limit(8)
-    ).all()
-
-    return render(
-        request,
-        "dashboard.html",
-        {
-            "user": user,
-            "kpis": kpis,
-            "recent": recent,
-            "systems": systems,
-            "discovery_prompt": DISCOVERY_PROMPT,
-            "implementation_prompt": IMPLEMENTATION_PROMPT,
-            "tenant_addendum_prompt": TENANT_PROVISIONING_ADDENDUM,
-        },
-    )
+    return {
+        "now": now,  # relógio do banco (created_at da auditoria)
+        "utc_now": utcnow(),  # users.last_login_at é gravado em UTC pelo app
+        "systems": systems,
+        "perms_granted": count(select(func.count(UserAppPermission.id))),
+        "users_active": users_active,
+        "users_pending": users_pending,
+        "users_never": users_never,
+        "last_logins": last_logins,
+        "days": days,
+        "logins_today": logins_today,
+        "logins_week": logins_week,
+        "failed_week": failed_week,
+        "failed_recent": failed_recent,
+        "security_level": security_level,
+        "events_24h": count(
+            select(func.count(AuditEvent.id)).where(
+                AuditEvent.created_at >= now - timedelta(hours=24)
+            )
+        ),
+        "recent": recent,
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -361,6 +405,7 @@ def clients_update(
 def operators_list(
     request: Request,
     q: str | None = None,
+    f: str = "todos",
     db: Session = Depends(get_db),
     user: User = Depends(require_web_admin),
 ):
@@ -374,7 +419,30 @@ def operators_list(
         stmt = stmt.where(
             (User.full_name.like(like)) | (User.username.like(like)) | (User.email.like(like))
         )
-    operators = db.scalars(stmt).all()
+    everyone = db.scalars(stmt).all()
+    pw_states = _password_states(db, everyone)
+
+    def needs_password(u: User) -> bool:
+        return pw_states[u.id]["key"] != "set" and not u.govbr_sub
+
+    # contagens dos filtros rápidos (já respeitando a busca)
+    counts = {
+        "todos": len(everyone),
+        "ativos": sum(1 for u in everyone if u.is_active),
+        "pendentes": sum(1 for u in everyone if not u.is_active),
+        "semsenha": sum(1 for u in everyone if needs_password(u)),
+        "admins": sum(1 for u in everyone if u.is_superuser),
+    }
+    if f not in counts:
+        f = "todos"
+    pick = {
+        "todos": lambda u: True,
+        "ativos": lambda u: u.is_active,
+        "pendentes": lambda u: not u.is_active,
+        "semsenha": needs_password,
+        "admins": lambda u: u.is_superuser,
+    }[f]
+    operators = [u for u in everyone if pick(u)]
     clients = db.scalars(select(Client).order_by(Client.name)).all()
     return render(
         request,
@@ -383,7 +451,10 @@ def operators_list(
             "user": user,
             "operators": operators,
             "clients": clients,
-            "pw_states": _password_states(db, operators),
+            "pw_states": pw_states,
+            "counts": counts,
+            "flt": f,  # (não chamar de "f": o template importa forms.html como "f")
+            "utc_now": utcnow(),  # users.last_login_at é gravado em UTC pelo app
             "q": q or "",
             "import_summary": request.session.pop("operators_import_summary", None),
         },
@@ -704,10 +775,8 @@ def apps_list(
         distinct_by_app.setdefault(g.application_id, set()).add(g.user_id)
     granted_users_count = {app_id: len(users) for app_id, users in distinct_by_app.items()}
 
-    # apenas o resumo de cada módulo aqui — a config detalhada de usuários
-    # fica na página própria do módulo (/apps/{slug}), leve mesmo com muitos
-    # sistemas.
-    import_summary = request.session.pop("import_summary", None)
+    # Só o "cartão de módulo" aqui (nome, cor, estado): o conteúdo de cada
+    # sistema fica na página própria (/apps/{slug}).
     new_secret = request.session.pop("new_app_secret", None)
     return render(
         request,
@@ -718,7 +787,6 @@ def apps_list(
             "clients": clients,
             "granted_users_count": granted_users_count,
             "new_secret": new_secret,
-            "import_summary": import_summary,
         },
     )
 
@@ -983,67 +1051,9 @@ async def apps_sync_users(
 
 
 # --------------------------------------------------------------------------- #
-# Importar especificação (JSON do prompt de descoberta) — cria/atualiza a
-# Application e o catálogo de Permissions em um passo só.
-# --------------------------------------------------------------------------- #
-@router.get("/apps/importar")
-def apps_import_form(
-    request: Request,
-    user: User = Depends(require_web_admin),
-):
-    return render(request, "apps/import.html", {"user": user})
-
-
-@router.post("/apps/importar/preview")
-def apps_import_preview(
-    request: Request,
-    spec_json: str = Form(...),
-    user: User = Depends(require_web_admin),
-    db: Session = Depends(get_db),
-):
-    try:
-        spec = app_import.parse_spec(spec_json)
-        plan = app_import.build_plan(db, spec)
-    except app_import.SpecError as exc:
-        return render(
-            request,
-            "apps/import.html",
-            {"user": user, "error": str(exc), "spec_json": spec_json},
-        )
-    return render(
-        request,
-        "apps/import.html",
-        {"user": user, "plan": plan, "spec_json": spec_json},
-    )
-
-
-@router.post("/apps/importar/confirmar")
-def apps_import_confirm(
-    request: Request,
-    spec_json: str = Form(...),
-    user: User = Depends(require_web_admin),
-    db: Session = Depends(get_db),
-):
-    try:
-        spec = app_import.parse_spec(spec_json)
-        plan = app_import.build_plan(db, spec)
-    except app_import.SpecError as exc:
-        return render(
-            request,
-            "apps/import.html",
-            {"user": user, "error": str(exc), "spec_json": spec_json},
-        )
-    summary = app_import.apply_plan(db, plan, actor=user, request=request)
-    request.session["import_summary"] = summary
-    if summary["new_secret"]:
-        request.session["new_app_secret"] = summary["new_secret"]
-    return RedirectResponse("/apps", status_code=status.HTTP_302_FOUND)
-
-
-# --------------------------------------------------------------------------- #
-# Página do módulo (um sistema por vez) — precisa vir DEPOIS de /apps/importar
-# acima: rota literal tem que ser registrada antes da genérica {slug}, senão
-# o Starlette casa "/apps/importar" aqui e a página de import fica inacessível.
+# Página do módulo (um sistema por vez). Rotas literais /apps/<algo> novas
+# precisam ser registradas ANTES desta genérica {slug}, senão o Starlette casa
+# o literal aqui.
 # --------------------------------------------------------------------------- #
 @router.get("/apps/{slug}")
 def app_detail(

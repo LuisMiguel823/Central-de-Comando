@@ -1,7 +1,7 @@
 {% extends "base.html" %} {% import "partials/forms.html" as f %} {% block title
-%}{{ app.name }}{% endblock %} {% block heading %}{{ app.name }}{% endblock %}
+%}{{ app.name }}{% endblock %} {% block heading %}Sistemas{% endblock %}
 {% block subheading %}
-<p class="text-xs text-slate-500">{{ app.slug }} · {{ app.client.code if app.client else "global" }}</p>
+<p class="text-sm text-slate-500">Módulo {{ app.name }}</p>
 {% endblock %} {% block content %}
 
 {% macro client_select(clients, selected="") %}
@@ -43,24 +43,31 @@
 </div>
 {% endif %}
 
-<!-- Status + ações -->
-<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-5">
-  <div class="flex items-center gap-2">
-    {% if app.is_active %}
-    <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">ativo</span>
-    {% else %}
-    <span class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">inativo</span>
-    {% endif %}
-    {% if app.description %}<span class="text-sm text-slate-500">{{ app.description }}</span>{% endif %}
+<!-- Cabeçalho do módulo (na cor dele) -->
+<div class="mod-hero mb-5 {{ '' if app.is_active else 'is-off' }}" style="--hue: {{ app.slug | module_hue }}" data-mark="{{ app.name | initials }}">
+  <div class="flex flex-wrap items-center gap-4">
+    <span class="mod-badge">{{ app.name | initials }}</span>
+    <div class="min-w-0 flex-1">
+      <h2 class="mod-name">{{ app.name }}</h2>
+      <p class="mod-slug">{{ app.slug }} · {{ app.client.code if app.client else "global" }}{% if app.description %} · {{ app.description }}{% endif %}</p>
+    </div>
+    <span class="mod-state"><i></i>{{ "Ativo" if app.is_active else "Inativo" }}</span>
   </div>
+
+  <div class="mod-stats">
+    <div><b>{{ app.permissions | length }}</b><span>permiss{{ "ão" if app.permissions | length == 1 else "ões" }}</span></div>
+    <div><b>{{ granted_count | length }}</b><span>usuário{{ "" if granted_count | length == 1 else "s" }} com acesso</span></div>
+    <div><b>{{ app.redirect_uri_list | length }}</b><span>endereço{{ "" if app.redirect_uri_list | length == 1 else "s" }} de retorno</span></div>
+  </div>
+
   {% if user.is_superuser %}
-  <div class="flex gap-3 text-xs">
-    <button data-open-modal="edit-app" class="font-medium text-brand-600 hover:underline">Editar</button>
+  <div class="mod-actions">
+    <button data-open-modal="edit-app" class="mod-btn">Editar</button>
     <form method="post" action="/apps/{{ app.id }}/rotacionar-segredo" data-confirm="Rotacionar o client_secret deste sistema? Quem já integrou precisa atualizar.">
-      <button class="font-medium text-orange-600 hover:underline">Rotacionar segredo</button>
+      <button class="mod-btn">Rotacionar segredo</button>
     </form>
     <form method="post" action="/apps/{{ app.id }}/excluir" data-confirm="Excluir o sistema '{{ app.name }}'? Isso apaga o catálogo de permissões e todos os acessos concedidos. Não tem como desfazer.">
-      <button class="font-medium text-red-600 hover:underline">Excluir sistema</button>
+      <button class="mod-btn is-danger">Excluir sistema</button>
     </form>
   </div>
   {% endif %}
@@ -106,8 +113,8 @@
   </ul>
   {% else %}
   <p class="mt-2 text-sm text-slate-400">
-    Nenhuma permissão cadastrada ainda.
-    <a href="/apps/importar" class="font-medium text-brand-600 hover:underline">Importe a especificação</a> ou adicione manualmente acima.
+    Nenhuma permissão cadastrada ainda. Elas chegam sozinhas quando o dono do sistema executa o
+    passo 2 da mensagem de integração, ou você pode adicionar manualmente em "+ Adicionar".
   </p>
   {% endif %}
 </div>

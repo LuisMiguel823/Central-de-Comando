@@ -3,132 +3,207 @@ heading %}Dashboard{% endblock %} {% block subheading %}
 <p class="text-sm text-slate-500">Olá, {{ (user.full_name or user.username).split(" ")[0] }} — visão geral da Central</p>
 {% endblock %} {% block content %}
 
-{% macro kicon(name) %}
-<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-  {% if name == "building" %}<path d="M3 21h18M6 21V7l6-4 6 4v14M10 9h4M10 13h4M10 17h4" />
-  {% elif name == "users" %}<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
-  {% elif name == "grid" %}<path d="M3 3h8v8H3V3Zm10 0h8v8h-8V3ZM3 13h8v8H3v-8Zm10 0h8v8h-8v-8Z" />
-  {% elif name == "key" %}<path d="M21 2l-2 2m-7.6 7.6a5 5 0 1 1-7 7 5 5 0 0 1 7-7Zm0 0L15 8m0 0 3 3 3-3-3-3" />
+{% macro ico(name) %}
+<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+  {% if name == "grid" %}<path d="M3 3h8v8H3V3Zm10 0h8v8h-8V3ZM3 13h8v8H3v-8Zm10 0h8v8h-8v-8Z" />
+  {% elif name == "users" %}<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
   {% elif name == "login" %}<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" />
+  {% elif name == "logout" %}<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9" />
+  {% elif name == "shield" %}<path d="M12 3 4 6v6c0 4.5 3.2 8 8 9 4.8-1 8-4.5 8-9V6l-8-3Z" /><path d="m9 12 2 2 4-4" />
   {% elif name == "alert" %}<path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
-  {% elif name == "clock" %}<circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" />
-  {% else %}<path d="M22 12h-4l-3 9L9 3l-3 9H2" />{% endif %}
+  {% elif name == "key" %}<path d="M21 2l-2 2m-7.6 7.6a5 5 0 1 1-7 7 5 5 0 0 1 7-7Zm0 0L15 8m0 0 3 3 3-3-3-3" />
+  {% elif name == "plus" %}<path d="M12 5v14M5 12h14" />
+  {% elif name == "trash" %}<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+  {% elif name == "doc" %}<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z" /><path d="M14 2v6h6M9 13l2 2 4-4" />
+  {% elif name == "link" %}<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
+  {% else %}<circle cx="12" cy="12" r="3" />{% endif %}
 </svg>
 {% endmacro %}
 
-<section class="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-  {% for k in kpis %}
-  <div
-    class="kpi-card rounded-2xl border border-slate-100 bg-white p-4 {{ k.hover }}"
-  >
-    <span
-      class="grid h-9 w-9 place-items-center rounded-xl bg-brand-100 text-brand-600"
-      >{{ kicon(k.icon) }}</span
-    >
-    <p class="mt-3 text-2xl font-bold text-slate-800">{{ k.value or 0 }}</p>
-    <p class="mt-0.5 text-xs leading-snug text-slate-500">{{ k.label }}</p>
-  </div>
-  {% endfor %}
-</section>
+{% set sec_hue = {"ok": "16 178 122", "warn": "245 158 11", "bad": "239 68 68"}[security_level] %}
 
-<section class="mt-6 grid gap-4 lg:grid-cols-3">
-  <!-- Atividade recente -->
-  <div class="rounded-2xl border border-slate-100 bg-white lg:col-span-2">
-    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-      <h2 class="text-sm font-semibold text-slate-700">Atividade recente</h2>
-      <a href="/auditoria" class="text-xs font-medium text-brand-600 hover:underline"
-        >Ver auditoria</a
-      >
-    </div>
-    <ul class="divide-y divide-slate-100">
-      {% for e in recent %}
-      <li class="flex items-center gap-3 px-5 py-3">
-        <span
-          class="mt-0.5 inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600"
-          >{{ e.action }}</span
-        >
-        <div class="min-w-0 flex-1">
-          <p class="truncate text-sm text-slate-700">
-            {{ e.description or e.action }}
-          </p>
-          <p class="text-xs text-slate-400">
-            {{ e.actor_name }} · {{ e.created_at.strftime("%d/%m %H:%M") }}
-            {%- if e.ip_address %} · {{ e.ip_address }}{% endif %}
-          </p>
+<!-- ============================ Cartões principais ============================ -->
+<section class="hero-grid" aria-label="Indicadores principais">
+
+  <!-- Sistemas -->
+  <div class="hero-slot" style="--hue: 16 178 122">
+    <article class="hero-card" tabindex="0" aria-label="Sistemas integrados">
+      <div class="hero-top">
+        <div class="hero-head">
+          <span class="hero-ico">{{ ico("grid") }}</span>
+          <svg class="hero-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
         </div>
-      </li>
-      {% else %}
-      <li class="px-5 py-8 text-center text-sm text-slate-400">Sem eventos ainda.</li>
-      {% endfor %}
-    </ul>
-  </div>
-
-  <!-- Sistemas integrados -->
-  <div class="rounded-2xl border border-slate-100 bg-white">
-    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-      <h2 class="text-sm font-semibold text-slate-700">Sistemas integrados</h2>
-      <a href="/apps" class="text-xs font-medium text-brand-600 hover:underline">Ver todos</a>
-    </div>
-    <ul class="divide-y divide-slate-100">
-      {% for app, perm_count in systems %}
-      <li>
-        <a href="/apps/{{ app.slug }}" class="flex items-center justify-between px-5 py-3 text-sm hover:bg-slate-50">
-          <div>
-            <p class="font-medium text-slate-700">{{ app.name }}</p>
-            <p class="text-xs text-slate-400">{{ perm_count }} permissão(ões)</p>
-          </div>
-          {% if app.is_active %}
-          <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">ativo</span>
-          {% else %}
-          <span class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">inativo</span>
-          {% endif %}
+        <div>
+          <div class="hero-num">{{ systems | length }}</div>
+          <div class="hero-label">Sistemas integrados</div>
+          <div class="hero-sub">{{ perms_granted }} permiss{{ "ão concedida" if perms_granted == 1 else "ões concedidas" }}</div>
+        </div>
+      </div>
+      <div class="hero-more"><div class="hero-more-inner"><div class="hero-more-body">
+        {% for s in systems[:6] %}
+        <a href="/apps/{{ s.app.slug }}" class="mini-row hover:opacity-80">
+          <span class="inline-flex items-center gap-2 font-semibold">
+            <span class="h-2.5 w-2.5 rounded-full" style="background: rgb({{ s.app.slug | module_hue }})"></span>{{ s.app.name }}
+          </span>
+          <small>{{ s.permissions }} perm. · {{ s.users }} usuário{{ "" if s.users == 1 else "s" }}</small>
         </a>
-      </li>
-      {% else %}
-      <li class="px-5 py-8 text-center text-sm text-slate-400">Nenhum sistema integrado ainda.</li>
-      {% endfor %}
-    </ul>
+        {% else %}
+        <p class="text-sm text-slate-500">Nenhum sistema integrado ainda.</p>
+        {% endfor %}
+        <a href="/apps" class="mini-link">{{ "Abrir todos os sistemas" if systems else "Cadastrar o primeiro sistema" }} &rarr;</a>
+      </div></div></div>
+    </article>
+  </div>
+
+  <!-- Usuários -->
+  <div class="hero-slot" style="--hue: 139 92 246">
+    <article class="hero-card" tabindex="0" aria-label="Usuários">
+      <div class="hero-top">
+        <div class="hero-head">
+          <span class="hero-ico">{{ ico("users") }}</span>
+          <svg class="hero-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+        </div>
+        <div>
+          <div class="hero-num">{{ users_active }}</div>
+          <div class="hero-label">Usuários ativos</div>
+          <div class="hero-sub">{{ users_pending }} pendente{{ "" if users_pending == 1 else "s" }} de liberação</div>
+        </div>
+      </div>
+      <div class="hero-more"><div class="hero-more-inner"><div class="hero-more-body">
+        <div class="mini-row"><span>Ativos</span><span class="chip" style="--hue: 16 178 122">{{ users_active }}</span></div>
+        <div class="mini-row"><span>Pendentes</span><span class="chip" style="--hue: 245 158 11">{{ users_pending }}</span></div>
+        <div class="mini-row"><span>Nunca entraram</span><span class="chip" style="--hue: 100 116 108">{{ users_never }}</span></div>
+        {% if last_logins %}
+        <p class="mb-1 mt-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Últimos acessos</p>
+        {% for u in last_logins %}
+        <a href="/operadores/{{ u.id }}" class="mini-row hover:opacity-80">
+          <span class="font-semibold">{{ u.full_name.split(" ")[0] }}</span><small>{{ u.last_login_at | ago(utc_now) }}</small>
+        </a>
+        {% endfor %}
+        {% endif %}
+        <a href="/operadores" class="mini-link">Gerenciar usuários &rarr;</a>
+      </div></div></div>
+    </article>
+  </div>
+
+  <!-- Acessos -->
+  <div class="hero-slot" style="--hue: 20 184 166">
+    <article class="hero-card" tabindex="0" aria-label="Acessos hoje">
+      <div class="hero-top">
+        <div class="hero-head">
+          <span class="hero-ico">{{ ico("login") }}</span>
+          <svg class="hero-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+        </div>
+        <div>
+          <div class="hero-num">{{ logins_today }}</div>
+          <div class="hero-label">Acessos hoje</div>
+          <div class="hero-sub">{{ logins_week }} nos últimos 7 dias</div>
+        </div>
+      </div>
+      <div class="hero-more"><div class="hero-more-inner"><div class="hero-more-body">
+        <p class="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Entradas por dia</p>
+        {% if logins_week %}
+        <div class="bars" role="img" aria-label="Entradas por dia nos últimos 7 dias: {% for d in days %}{{ d.label }} {{ d.count }}{{ ", " if not loop.last }}{% endfor %}">
+          {% for d in days %}
+          <div class="bar-col {{ 'is-today' if d.is_today }}" data-tip="{{ d.label }} {{ d.date }} · {{ d.count }}">
+            {% if d.is_today and d.count %}<span class="bar-val">{{ d.count }}</span>{% endif %}
+            <div class="bar" style="height: {{ [d.pct, 4] | max }}%"></div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="bar-days">{% for d in days %}<span class="{{ 'is-today' if d.is_today }}">{{ d.label }}</span>{% endfor %}</div>
+        <table class="sr-only">
+          <caption>Entradas por dia</caption>
+          <tbody>{% for d in days %}<tr><th>{{ d.label }} {{ d.date }}</th><td>{{ d.count }}</td></tr>{% endfor %}</tbody>
+        </table>
+        {% else %}
+        <p class="text-sm text-slate-500">Nenhum acesso nos últimos 7 dias.</p>
+        {% endif %}
+        <a href="/auditoria?action=auth.login" class="mini-link">Ver acessos na auditoria &rarr;</a>
+      </div></div></div>
+    </article>
+  </div>
+
+  <!-- Segurança -->
+  <div class="hero-slot" style="--hue: {{ sec_hue }}">
+    <article class="hero-card" tabindex="0" aria-label="Segurança">
+      <div class="hero-top">
+        <div class="hero-head">
+          <span class="hero-ico">{{ ico("shield" if security_level == "ok" else "alert") }}</span>
+          <svg class="hero-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+        </div>
+        <div>
+          <div class="hero-num">{{ failed_week }}</div>
+          <div class="hero-label">Falhas de login (7 dias)</div>
+          <div class="hero-sub">
+            <span class="chip"><i></i>{{ {"ok": "Tudo tranquilo", "warn": "Vale conferir", "bad": "Atenção"}[security_level] }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-more"><div class="hero-more-inner"><div class="hero-more-body">
+        {% for e in failed_recent %}
+        <div class="mini-row">
+          <span class="min-w-0">
+            <span class="block truncate font-semibold">{{ e.actor_name }}</span>
+            <small>{{ e.ip_address or "IP desconhecido" }}</small>
+          </span>
+          <small>{{ e.created_at | ago(now) }}</small>
+        </div>
+        {% else %}
+        <p class="text-sm text-slate-500">Nenhuma tentativa de acesso falhou. Tudo certo por aqui.</p>
+        {% endfor %}
+        <a href="/auditoria?action=auth.login_failed" class="mini-link">Abrir na auditoria &rarr;</a>
+      </div></div></div>
+    </article>
   </div>
 </section>
 
-<details class="group mt-8">
-  <summary class="flex cursor-pointer list-none items-center gap-2 rounded-xl px-1 py-2 text-sm font-semibold text-slate-600 hover:text-brand-600">
-    <svg class="h-4 w-4 transition-transform group-open:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6" /></svg>
-    Prompts de integração de novos sistemas
-  </summary>
-<section class="mt-3 grid gap-4 lg:grid-cols-2">
-  <div class="rounded-2xl border border-slate-100 bg-white">
-    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-      <div>
-        <h2 class="text-sm font-semibold text-slate-700">Prompt de descoberta</h2>
-        <p class="text-xs text-slate-400">Manda pra IA do sistema satélite — ela só lê o código dele</p>
-      </div>
-      <button data-copy-target="prompt-discovery" class="rounded-lg border border-brand-200 bg-brand-100 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:brightness-105">Copiar</button>
+<!-- ============================ Atividade + atalhos ============================ -->
+<section class="mt-8 grid gap-6 lg:grid-cols-3">
+  <div class="lg:col-span-2">
+    <div class="sec-title">
+      <h2>Atividade recente</h2>
+      <a href="/auditoria">Ver auditoria</a>
     </div>
-    <textarea id="prompt-discovery" readonly rows="8" class="w-full resize-none border-0 bg-transparent px-5 py-3 font-mono text-[11px] text-slate-500 outline-none">{{ discovery_prompt }}</textarea>
+    <div class="rounded-2xl border border-slate-100 bg-white px-5 py-3">
+      <ul class="tl">
+        {% for e in recent %}
+        {% set a = e.action %}
+        {% if a == "auth.login" %}{% set hue, icon = "16 178 122", "login" %}
+        {% elif a == "auth.logout" %}{% set hue, icon = "100 116 108", "logout" %}
+        {% elif a == "auth.login_failed" %}{% set hue, icon = "239 68 68", "alert" %}
+        {% elif a.endswith(".delete") %}{% set hue, icon = "239 68 68", "trash" %}
+        {% elif a.endswith(".create") %}{% set hue, icon = "245 158 11", "plus" %}
+        {% elif a.startswith("permission") %}{% set hue, icon = "139 92 246", "key" %}
+        {% elif a.startswith("oauth") %}{% set hue, icon = "20 184 166", "link" %}
+        {% elif a.startswith("user.password") or a.startswith("auth.password") %}{% set hue, icon = "20 184 166", "key" %}
+        {% else %}{% set hue, icon = "100 116 108", "doc" %}{% endif %}
+        <li class="tl-item" style="--hue: {{ hue }}">
+          <span class="tl-dot">{{ ico(icon) }}</span>
+          <div class="min-w-0">
+            <p class="tl-title truncate">{{ e.description or e.action }}</p>
+            <p class="tl-meta">{{ e.actor_name }}{% if e.ip_address %} · {{ e.ip_address }}{% endif %}</p>
+          </div>
+          <span class="tl-when">{{ e.created_at | ago(now) }}</span>
+        </li>
+        {% else %}
+        <li class="py-8 text-center text-sm text-slate-400">Sem eventos ainda.</li>
+        {% endfor %}
+      </ul>
+    </div>
   </div>
 
-  <div class="rounded-2xl border border-slate-100 bg-white">
-    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-      <div>
-        <h2 class="text-sm font-semibold text-slate-700">Prompt de implementação</h2>
-        <p class="text-xs text-slate-400">Manda depois de importar a resposta do primeiro em Sistemas</p>
-      </div>
-      <button data-copy-target="prompt-implementation" class="rounded-lg border border-brand-200 bg-brand-100 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:brightness-105">Copiar</button>
+  <div>
+    <div class="sec-title"><h2>Atalhos</h2></div>
+    <div class="grid gap-2.5">
+      <a href="/apps" class="shortcut" style="--hue: 16 178 122"><span class="ico">{{ ico("plus") }}</span>Novo sistema</a>
+      <a href="/operadores" class="shortcut" style="--hue: 139 92 246"><span class="ico">{{ ico("users") }}</span>Novo usuário</a>
+      <a href="/operadores?f=semsenha" class="shortcut" style="--hue: 20 184 166"><span class="ico">{{ ico("link") }}</span>
+        Gerar link de senha{% if users_never %}<span class="chip ml-auto" style="--hue: 245 158 11">{{ users_never }} sem entrar</span>{% endif %}
+      </a>
+      <a href="/auditoria" class="shortcut" style="--hue: 100 116 108"><span class="ico">{{ ico("doc") }}</span>Auditoria completa</a>
     </div>
-    <textarea id="prompt-implementation" readonly rows="8" class="w-full resize-none border-0 bg-transparent px-5 py-3 font-mono text-[11px] text-slate-500 outline-none">{{ implementation_prompt }}</textarea>
-  </div>
-
-  <div class="rounded-2xl border border-slate-100 bg-white lg:col-span-2">
-    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-      <div>
-        <h2 class="text-sm font-semibold text-slate-700">Complemento — vínculo automático por tenant</h2>
-        <p class="text-xs text-slate-400">Cole junto com o prompt de implementação quando o sistema satélite for multi-tenant (várias câmaras/clientes)</p>
-      </div>
-      <button data-copy-target="prompt-tenant" class="rounded-lg border border-brand-200 bg-brand-100 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:brightness-105">Copiar</button>
-    </div>
-    <textarea id="prompt-tenant" readonly rows="8" class="w-full resize-none border-0 bg-transparent px-5 py-3 font-mono text-[11px] text-slate-500 outline-none">{{ tenant_addendum_prompt }}</textarea>
+    <p class="mt-4 text-xs text-slate-400">{{ events_24h }} evento{{ "" if events_24h == 1 else "s" }} registrado{{ "" if events_24h == 1 else "s" }} nas últimas 24 horas.</p>
   </div>
 </section>
-</details>
 {% endblock %}

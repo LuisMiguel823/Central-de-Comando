@@ -30,12 +30,10 @@ def test_crud_pages_load(admin_client):
         assert admin_client.get(path).status_code == 200
 
 
-def test_app_module_page_loads_and_importar_route_not_shadowed(admin_client):
-    # /apps/importar é uma rota literal e precisa continuar acessível mesmo
-    # com /apps/{slug} registrada (regressão: {slug} "engolindo" "importar").
-    r = admin_client.get("/apps/importar")
-    assert r.status_code == 200
-    assert "spec_json" in r.text or "Importar" in r.text
+def test_app_module_page_loads(admin_client):
+    # o importador de especificação JSON foi removido: a rota antiga cai na
+    # genérica /apps/{slug} e dá 404 (nenhum sistema com esse slug).
+    assert admin_client.get("/apps/importar").status_code == 404
 
     r = admin_client.get("/apps/app-1")
     assert r.status_code == 200

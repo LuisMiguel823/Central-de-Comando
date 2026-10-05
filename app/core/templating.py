@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import zlib
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +34,54 @@ def tier_badge(tier: str) -> str:
 
 
 templates.env.filters["tier_badge"] = tier_badge
+
+# Cor automática de cada módulo (sistema): estável, sai do slug. Triplas RGB
+# usadas como `--hue` no CSS (rgb(var(--hue) / .x)).
+_MODULE_HUES = [
+    "16 178 122",  # esmeralda
+    "139 92 246",  # violeta
+    "245 158 11",  # âmbar
+    "244 63 94",  # rosa
+    "20 184 166",  # turquesa
+    "249 115 22",  # laranja
+    "217 70 239",  # fúcsia
+    "99 102 241",  # índigo
+]
+
+
+def module_hue(key: str) -> str:
+    return _MODULE_HUES[zlib.crc32((key or "").encode()) % len(_MODULE_HUES)]
+
+
+def initials(name: str) -> str:
+    parts = [p for p in (name or "").replace("-", " ").split() if p]
+    if not parts:
+        return "?"
+    if len(parts) == 1:
+        return parts[0][:2].upper()
+    return (parts[0][0] + parts[1][0]).upper()
+
+
+def ago(dt: datetime | None, now: datetime | None = None) -> str:
+    """'agora', 'há 5 min', 'há 3 h', 'há 2 d' — ou a data, se for antigo."""
+    if dt is None:
+        return "—"
+    now = now or datetime.now()
+    secs = int((now - dt).total_seconds())
+    if secs < 45:
+        return "agora"
+    if secs < 3600:
+        return f"há {max(1, secs // 60)} min"
+    if secs < 86400:
+        return f"há {secs // 3600} h"
+    if secs < 86400 * 7:
+        return f"há {secs // 86400} d"
+    return dt.strftime("%d/%m/%Y")
+
+
+templates.env.filters["module_hue"] = module_hue
+templates.env.filters["initials"] = initials
+templates.env.filters["ago"] = ago
 
 
 def render(
