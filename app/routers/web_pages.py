@@ -1087,6 +1087,19 @@ def app_detail(
         ).all()
     }
     clients_by_id = {c.id: c for c in clients}
+    # quem já tem acesso aparece primeiro; depois os sem acesso, por nome
+    operators = sorted(
+        operators,
+        key=lambda u: (-granted_count.get(u.id, 0), not u.is_active, (u.full_name or "").lower()),
+    )
+    admins_count = int(
+        db.scalar(
+            select(func.count(User.id)).where(
+                User.is_superuser.is_(True), User.is_active.is_(True)
+            )
+        )
+        or 0
+    )
 
     new_secret = request.session.pop("new_app_secret", None)
     package = None
@@ -1109,6 +1122,7 @@ def app_detail(
             "clients_by_id": clients_by_id,
             "app_clients": app_clients,
             "operators": operators,
+            "admins_count": admins_count,
             "granted_pairs": granted_pairs,
             "granted_count": granted_count,
             "new_secret": new_secret,

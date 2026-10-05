@@ -35,8 +35,16 @@ class Permission(TimestampMixin, Base):
 
     @property
     def category(self) -> str:
-        """Prefixo antes do primeiro ponto do code (ex.: 'clientes.editar' -> 'clientes'), usado só pra agrupar visualmente na tela de permissões."""
-        return self.code.split(".", 1)[0]
+        """Grupo visual na tela de permissões (não afeta nada além da tela).
+
+        'clientes.editar' -> 'clientes' (prefixo antes do ponto); sem ponto,
+        'admin_painel' -> 'admin' e o resto cai em 'geral' — senão cada code
+        sem ponto virava um grupo de um item só."""
+        if "." in self.code:
+            return self.code.split(".", 1)[0]
+        if self.code.startswith("admin_"):
+            return "admin"
+        return "geral"
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Permission {self.code}>"

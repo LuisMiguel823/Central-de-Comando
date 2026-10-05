@@ -79,6 +79,14 @@ def ago(dt: datetime | None, now: datetime | None = None) -> str:
     return dt.strftime("%d/%m/%Y")
 
 
+_CATEGORY_LABELS = {"admin": "Administração global", "geral": "Geral"}
+
+
+def cat_label(category: str) -> str:
+    return _CATEGORY_LABELS.get(category, category.replace("_", " ").title())
+
+
+templates.env.filters["cat_label"] = cat_label
 templates.env.filters["module_hue"] = module_hue
 templates.env.filters["initials"] = initials
 templates.env.filters["ago"] = ago

@@ -143,7 +143,7 @@
     {% if a.permissions %}
     {% for category, perms in a.permissions | groupby("category") %}
     <div class="px-5 pt-3 {{ 'pb-4' if loop.last }}">
-      <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{{ category.replace("_", " ") | title }}</p>
+      <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{{ category | cat_label }}</p>
       <div class="grid gap-1.5 sm:grid-cols-2">
         {% for p in perms %}
         <label class="flex items-start gap-2 rounded-lg px-2 py-1 text-xs hover:bg-slate-50">

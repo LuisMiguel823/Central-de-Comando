@@ -52,7 +52,10 @@ def test_systems_page_shows_module_tiles_without_inner_content(admin_client):
     # o conteúdo do sistema (permissões/usuários) só aparece dentro do módulo
     assert "usuário(s) com acesso" not in r.text
     inner = admin_client.get("/apps/app-1")
-    assert 'class="mod-hero' in inner.text and "Catálogo de permissões" in inner.text
+    assert 'class="mod-hero' in inner.text and "Quem tem acesso" in inner.text
+    assert "Permissões do sistema" in inner.text
+    # dados técnicos ficam recolhidos, não numa seção sempre aberta
+    assert "Dados técnicos de integração" in inner.text and "Conexão OAuth" not in inner.text
 
 
 # ----------------------------------------------------------------- usuários
