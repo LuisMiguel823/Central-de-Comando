@@ -7,7 +7,7 @@
 {% macro client_select(clients, selected="") %}
 <div>
   <label class="mb-1 block text-sm font-medium text-slate-700">Cliente dono (opcional)</label>
-  <select name="client_id" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20">
+  <select name="client_id" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
     <option value="">— Global —</option>
     {% for c in clients %}
     <option value="{{ c.id }}" {{ "selected" if c.id|string == selected|string }}>{{ c.code }} — {{ c.name }}</option>
@@ -17,7 +17,7 @@
 {% endmacro %}
 
 <div class="mb-4">
-  <a href="/apps" class="text-sm text-cyan-600 hover:underline">&larr; Voltar para sistemas</a>
+  <a href="/apps" class="text-sm text-brand-600 hover:underline">&larr; Voltar para sistemas</a>
 </div>
 
 {% if package %}
@@ -55,7 +55,7 @@
   </div>
   {% if user.is_superuser %}
   <div class="flex gap-3 text-xs">
-    <button data-open-modal="edit-app" class="font-medium text-cyan-600 hover:underline">Editar</button>
+    <button data-open-modal="edit-app" class="font-medium text-brand-600 hover:underline">Editar</button>
     <form method="post" action="/apps/{{ app.id }}/rotacionar-segredo" data-confirm="Rotacionar o client_secret deste sistema? Quem já integrou precisa atualizar.">
       <button class="font-medium text-orange-600 hover:underline">Rotacionar segredo</button>
     </form>
@@ -85,7 +85,7 @@
   <div class="flex items-center justify-between">
     <h2 class="text-sm font-semibold text-slate-700">Catálogo de permissões ({{ app.permissions | length }})</h2>
     {% if user.is_superuser %}
-    <button data-open-modal="add-perm" class="text-xs font-medium text-cyan-600 hover:underline">+ Adicionar</button>
+    <button data-open-modal="add-perm" class="text-xs font-medium text-brand-600 hover:underline">+ Adicionar</button>
     {% endif %}
   </div>
   {% if app.permissions %}
@@ -107,7 +107,7 @@
   {% else %}
   <p class="mt-2 text-sm text-slate-400">
     Nenhuma permissão cadastrada ainda.
-    <a href="/apps/importar" class="font-medium text-cyan-600 hover:underline">Importe a especificação</a> ou adicione manualmente acima.
+    <a href="/apps/importar" class="font-medium text-brand-600 hover:underline">Importe a especificação</a> ou adicione manualmente acima.
   </p>
   {% endif %}
 </div>
@@ -131,7 +131,7 @@
       <summary class="cursor-pointer select-none list-none px-4 py-3 hover:bg-slate-50">
         <span class="text-sm font-medium text-slate-700">{{ op.full_name }}</span>
         <span class="text-xs text-slate-400">({{ op.username }} · {{ op.email }})</span>
-        <span class="ml-2 rounded-full bg-cyan-100 px-2 py-0.5 text-[11px] font-medium text-cyan-700">
+        <span class="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-700">
           {{ granted_count.get(op.id, 0) }}/{{ app.permissions | length }} permissões
         </span>
         {% set cid = app_clients.get(op.id) %}
@@ -149,7 +149,7 @@
         <div class="mb-3 rounded-lg bg-slate-50 p-2.5">
           <label class="mb-0.5 block text-[11px] font-medium text-slate-500">Cliente neste sistema (vai como <span class="font-mono">client_code</span> no login)</label>
           <select name="client_{{ op.id }}" form="perms-form"
-            class="w-full max-w-sm rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-cyan-500">
+            class="w-full max-w-sm rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-brand-500">
             <option value="">— sem cliente neste sistema —</option>
             {% for c in clients %}
             <option value="{{ c.id }}" {{ "selected" if app_clients.get(op.id) == c.id }}>{{ c.code }} — {{ c.name }}</option>
@@ -159,7 +159,7 @@
         </div>
         <p class="mb-3 text-[11px] text-slate-400">
           Nome, e-mail, senha e exclusão são da identidade central:
-          <a href="/operadores/{{ op.id }}" class="font-medium text-cyan-600 hover:underline">abrir usuário</a>.
+          <a href="/operadores/{{ op.id }}" class="font-medium text-brand-600 hover:underline">abrir usuário</a>.
         </p>
 
         {% for category, perms in grouped_perms %}

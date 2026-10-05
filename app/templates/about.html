@@ -113,7 +113,7 @@ heading %}Sobre o sistema{% endblock %} {% block subheading %}
     <h2 class="text-base font-semibold text-slate-800">O que já está funcionando</h2>
     <div class="mt-4 grid gap-4 sm:grid-cols-2">
       <div>
-        <h3 class="text-xs font-semibold uppercase tracking-wide text-cyan-700">Identidade e acesso</h3>
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-brand-700">Identidade e acesso</h3>
         <ul class="mt-2 space-y-1.5 text-sm text-slate-600">
           <li>✓ Login por usuário e senha (bcrypt), sessão em cookie assinado</li>
           <li>✓ APP CENTRAL funciona como provedor OIDC: <code class="rounded bg-slate-100 px-1 py-0.5 text-xs">/oauth/authorize</code>, <code class="rounded bg-slate-100 px-1 py-0.5 text-xs">/token</code>, <code class="rounded bg-slate-100 px-1 py-0.5 text-xs">/userinfo</code>, <code class="rounded bg-slate-100 px-1 py-0.5 text-xs">/jwks.json</code></li>
@@ -121,7 +121,7 @@ heading %}Sobre o sistema{% endblock %} {% block subheading %}
         </ul>
       </div>
       <div>
-        <h3 class="text-xs font-semibold uppercase tracking-wide text-cyan-700">Cadastros</h3>
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-brand-700">Cadastros</h3>
         <ul class="mt-2 space-y-1.5 text-sm text-slate-600">
           <li>✓ Clientes (câmaras), com plano Bronze/Prata/Ouro/Diamante</li>
           <li>✓ Operadores, vinculados ou não a um cliente</li>
@@ -129,14 +129,14 @@ heading %}Sobre o sistema{% endblock %} {% block subheading %}
         </ul>
       </div>
       <div>
-        <h3 class="text-xs font-semibold uppercase tracking-wide text-cyan-700">Permissões</h3>
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-brand-700">Permissões</h3>
         <ul class="mt-2 space-y-1.5 text-sm text-slate-600">
           <li>✓ Catálogo de permissões por aplicação (ex.: <code class="rounded bg-slate-100 px-1 py-0.5 text-xs">contratos.assinar</code>)</li>
           <li>✓ Concessão individual por operador; administrador herda todas</li>
         </ul>
       </div>
       <div>
-        <h3 class="text-xs font-semibold uppercase tracking-wide text-cyan-700">Auditoria</h3>
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-brand-700">Auditoria</h3>
         <ul class="mt-2 space-y-1.5 text-sm text-slate-600">
           <li>✓ Todo login, falha de login e mudança de permissão vira um evento</li>
           <li>✓ Cada evento guarda quem, quando, IP e o que mudou</li>
@@ -242,9 +242,9 @@ heading %}Sobre o sistema{% endblock %} {% block subheading %}
   <section class="rounded-2xl border border-slate-100 bg-white p-6">
     <h2 class="text-base font-semibold text-slate-800">Onde ver mais</h2>
     <ul class="mt-2 space-y-1.5 text-sm text-slate-600">
-      <li>• <a href="/docs" target="_blank" class="text-cyan-600 hover:underline">/docs</a> — todas as rotas da API, testáveis direto no navegador</li>
-      <li>• <a href="/.well-known/openid-configuration" target="_blank" class="text-cyan-600 hover:underline">/.well-known/openid-configuration</a> — o que o APP CENTRAL anuncia como provedor OIDC</li>
-      <li>• <a href="/auditoria" class="text-cyan-600 hover:underline">Auditoria</a> — histórico real de tudo que já aconteceu</li>
+      <li>• <a href="/docs" target="_blank" class="text-brand-600 hover:underline">/docs</a> — todas as rotas da API, testáveis direto no navegador</li>
+      <li>• <a href="/.well-known/openid-configuration" target="_blank" class="text-brand-600 hover:underline">/.well-known/openid-configuration</a> — o que o APP CENTRAL anuncia como provedor OIDC</li>
+      <li>• <a href="/auditoria" class="text-brand-600 hover:underline">Auditoria</a> — histórico real de tudo que já aconteceu</li>
     </ul>
   </section>
 

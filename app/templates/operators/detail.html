@@ -9,7 +9,7 @@
 {% set tabs = [("dados", "Dados"), ("acesso", "Acesso"), ("sistemas", "Sistemas")] %}
 
 <div class="mb-4 flex items-center justify-between gap-3">
-  <a href="/operadores" class="text-sm text-cyan-600 hover:underline">&larr; Voltar para usuários</a>
+  <a href="/operadores" class="text-sm text-brand-600 hover:underline">&larr; Voltar para usuários</a>
   <div class="flex gap-1.5">
     {% if target.is_superuser %}<span class="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">Admin</span>{% endif %}
     {% if target.is_active %}
@@ -23,7 +23,7 @@
 <div class="mb-5 flex gap-1 border-b border-slate-200">
   {% for key, label in tabs %}
   <a href="/operadores/{{ target.id }}?aba={{ key }}"
-    class="-mb-px border-b-2 px-4 py-2 text-sm font-medium {{ 'border-cyan-500 text-cyan-700' if aba == key else 'border-transparent text-slate-500 hover:text-slate-700' }}">{{ label }}</a>
+    class="-mb-px border-b-2 px-4 py-2 text-sm font-medium {{ 'border-brand-500 text-brand-700' if aba == key else 'border-transparent text-slate-500 hover:text-slate-700' }}">{{ label }}</a>
   {% endfor %}
 </div>
 
@@ -38,7 +38,7 @@
       {{ f.field("email", "E-mail", value=target.email, required=True, type="email") }}
       <div>
         <label class="mb-1 block text-sm font-medium text-slate-700">Vínculo (cliente)</label>
-        <select name="client_id" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20">
+        <select name="client_id" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
           <option value="">— Equipe interna —</option>
           {% for c in clients %}
           <option value="{{ c.id }}" {{ "selected" if c.id == target.client_id }}>{{ c.code }} — {{ c.name }}</option>
@@ -126,13 +126,13 @@
         <h2 class="text-sm font-semibold text-slate-700">{{ a.name }}</h2>
         <p class="text-xs text-slate-400">{{ a.slug }}</p>
       </div>
-      <a href="/apps/{{ a.slug }}" class="text-xs font-medium text-cyan-600 hover:underline">Abrir sistema</a>
+      <a href="/apps/{{ a.slug }}" class="text-xs font-medium text-brand-600 hover:underline">Abrir sistema</a>
     </div>
 
     <div class="border-b border-slate-100 bg-slate-50 px-5 py-3">
       <label class="mb-0.5 block text-[11px] font-medium text-slate-500">Cliente neste sistema (vai como <span class="font-mono">client_code</span> no login)</label>
       <select name="client_app_{{ a.id }}"
-        class="w-full max-w-sm rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-cyan-500">
+        class="w-full max-w-sm rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-brand-500">
         <option value="">— sem cliente neste sistema —</option>
         {% for c in clients %}
         <option value="{{ c.id }}" {{ "selected" if app_clients.get(a.id) == c.id }}>{{ c.code }} — {{ c.name }}</option>

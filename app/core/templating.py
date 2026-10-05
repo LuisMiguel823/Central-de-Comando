@@ -27,7 +27,7 @@ def tier_badge(tier: str) -> str:
         "BRONZE": "bg-amber-100 text-amber-700",
         "PRATA": "bg-slate-100 text-slate-600",
         "OURO": "bg-yellow-100 text-yellow-700",
-        "DIAMANTE": "bg-cyan-100 text-cyan-700",
+        "DIAMANTE": "bg-brand-100 text-brand-700",
     }.get(tier, "bg-slate-100 text-slate-600")
 
 

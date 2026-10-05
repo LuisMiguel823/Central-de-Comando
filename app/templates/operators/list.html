@@ -7,7 +7,7 @@ subheading %}
 {% macro client_select(clients, selected="") %}
 <div>
   <label class="mb-1 block text-sm font-medium text-slate-700">Vínculo (cliente)</label>
-  <select name="client_id" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20">
+  <select name="client_id" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
     <option value="">— Equipe interna —</option>
     {% for c in clients %}
     <option value="{{ c.id }}" {{ "selected" if c.id|string == selected|string }}>{{ c.code }} — {{ c.name }}</option>
@@ -19,12 +19,12 @@ subheading %}
 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
   <form method="get" class="flex gap-2">
     <input name="q" value="{{ q }}" placeholder="Buscar por nome, usuário ou e-mail"
-      class="w-72 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20" />
+      class="w-72 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
     <button class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">Buscar</button>
   </form>
   {% if user.is_superuser %}
   <div class="flex gap-2">
-    <a href="/operadores/importar" class="rounded-lg border border-cyan-200 bg-cyan-100 px-4 py-2 text-sm font-semibold text-cyan-700 hover:brightness-105">Importar em massa</a>
+    <a href="/operadores/importar" class="rounded-lg border border-brand-200 bg-brand-100 px-4 py-2 text-sm font-semibold text-brand-700 hover:brightness-105">Importar em massa</a>
     <button data-open-modal="modal-new" class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">+ Novo usuário</button>
   </div>
   {% endif %}
@@ -56,7 +56,7 @@ subheading %}
       {% for o in operators %}
       <tr class="hover:bg-slate-50">
         <td class="px-5 py-3">
-          <a href="/operadores/{{ o.id }}" class="font-medium text-slate-700 hover:text-cyan-700">{{ o.full_name }}</a>
+          <a href="/operadores/{{ o.id }}" class="font-medium text-slate-700 hover:text-brand-700">{{ o.full_name }}</a>
           <div class="text-xs text-slate-400">{{ o.username }} · {{ o.email }}</div>
         </td>
         <td class="px-5 py-3 text-slate-600">
@@ -66,7 +66,7 @@ subheading %}
           <div class="flex flex-wrap gap-1">
             {% if o.is_superuser %}<span class="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">Admin</span>{% endif %}
             {% if o.govbr_sub %}<span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">gov.br</span>{% endif %}
-            {% if o.account_level %}<span class="rounded-full bg-cyan-100 px-2 py-0.5 text-xs font-medium text-cyan-700">Login Único N{{ o.account_level }}</span>{% endif %}
+            {% if o.account_level %}<span class="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">Login Único N{{ o.account_level }}</span>{% endif %}
             {% set pw = pw_states[o.id] %}
             {% if pw.key == "set" %}<span class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">senha</span>
             {% elif pw.key == "pending" %}<span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700" title="Expira em {{ pw.expires.strftime('%d/%m/%Y %H:%M') }}">link enviado</span>
@@ -89,10 +89,10 @@ subheading %}
           {% if not o.has_password and not o.govbr_sub %}
           <form method="post" action="/operadores/{{ o.id }}/link-senha" class="mr-3 inline"
             data-confirm="Gerar um link novo de definição de senha? O link anterior deste usuário deixa de funcionar.">
-            <button class="text-xs font-medium text-cyan-600 hover:underline">Gerar link</button>
+            <button class="text-xs font-medium text-brand-600 hover:underline">Gerar link</button>
           </form>
           {% endif %}
-          <a href="/operadores/{{ o.id }}" class="text-xs font-medium text-cyan-600 hover:underline">Gerenciar</a>
+          <a href="/operadores/{{ o.id }}" class="text-xs font-medium text-brand-600 hover:underline">Gerenciar</a>
         </td>
       </tr>
       {% else %}

@@ -4,14 +4,14 @@ heading %}Auditoria{% endblock %} {% block subheading %}
 {% endblock %} {% block content %}
 
 <form method="get" class="mb-4 flex flex-wrap gap-2">
-  <select name="action" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-cyan-500">
+  <select name="action" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-500">
     <option value="">Todas as ações</option>
     {% for a in actions %}
     <option value="{{ a }}" {{ "selected" if a == action }}>{{ a }}</option>
     {% endfor %}
   </select>
   <input name="ator" value="{{ ator }}" placeholder="Ator (nome/usuário)"
-    class="w-56 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-cyan-500" />
+    class="w-56 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-brand-500" />
   <button class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">Filtrar</button>
   {% if action or ator %}
   <a href="/auditoria" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:underline">limpar</a>
