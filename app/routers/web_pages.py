@@ -28,6 +28,7 @@ from app.models import (
     AuditEvent,
     Client,
     ClientTier,
+    PasswordSetToken,
     Permission,
     User,
     UserAppClient,
@@ -47,6 +48,36 @@ router = APIRouter(include_in_schema=False)
 def _back(request: Request, fallback: str) -> str:
     ref = request.headers.get("referer")
     return ref or fallback
+
+
+def _password_states(db: Session, users: list[User]) -> dict[int, dict]:
+    """Estado da senha de cada usuário, pra lista e pra aba Acesso.
+
+    key: 'set' (já tem senha) | 'pending' (link válido aguardando uso) |
+    'expired' (link venceu e nunca foi usado) | 'none' (nada definido).
+    """
+    ids = [u.id for u in users]
+    latest: dict[int, object] = {}
+    if ids:
+        rows = db.execute(
+            select(PasswordSetToken.user_id, func.max(PasswordSetToken.expires_at))
+            .where(PasswordSetToken.user_id.in_(ids), PasswordSetToken.used_at.is_(None))
+            .group_by(PasswordSetToken.user_id)
+        ).all()
+        latest = {uid: exp for uid, exp in rows}
+    now = utcnow()
+    out: dict[int, dict] = {}
+    for u in users:
+        exp = latest.get(u.id)
+        if u.has_password:
+            out[u.id] = {"key": "set", "label": "Senha definida", "expires": None}
+        elif exp is not None and exp >= now:
+            out[u.id] = {"key": "pending", "label": "Link enviado, aguardando", "expires": exp}
+        elif exp is not None:
+            out[u.id] = {"key": "expired", "label": "Link expirado", "expires": exp}
+        else:
+            out[u.id] = {"key": "none", "label": "Sem senha", "expires": None}
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -338,6 +369,7 @@ def operators_list(
             "user": user,
             "operators": operators,
             "clients": clients,
+            "pw_states": _password_states(db, operators),
             "q": q or "",
             "import_summary": request.session.pop("operators_import_summary", None),
         },
@@ -506,17 +538,24 @@ def operators_delete(
                  request=request, commit=False)
     db.delete(target)
     db.commit()
-    return RedirectResponse(_back(request, "/operadores"), status_code=status.HTTP_302_FOUND)
+    # Sempre pra lista: o referer seria a página do usuário que acabou de sumir.
+    return RedirectResponse("/operadores", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/operadores/{user_id}/permissoes")
-def operator_permissions(
+@router.get("/operadores/{user_id}")
+def operator_detail(
     user_id: int,
     request: Request,
+    aba: str = "dados",
     db: Session = Depends(get_db),
     user: User = Depends(require_web_admin),
 ):
-    target = db.get(User, user_id) or _404("Operador")
+    """Página única do usuário: Dados, Acesso (senha) e Sistemas (permissões)."""
+    target = db.scalar(
+        select(User).options(selectinload(User.client)).where(User.id == user_id)
+    ) or _404("Usuário")
+    if aba not in {"dados", "acesso", "sistemas"}:
+        aba = "dados"
     apps = db.scalars(
         select(Application)
         .options(selectinload(Application.permissions))
@@ -528,10 +567,32 @@ def operator_permissions(
             select(UserAppPermission).where(UserAppPermission.user_id == user_id)
         ).all()
     }
+    app_clients = {
+        r.application_id: r.client_id
+        for r in db.scalars(select(UserAppClient).where(UserAppClient.user_id == user_id)).all()
+    }
+    clients = db.scalars(select(Client).order_by(Client.name)).all()
     return render(
         request,
-        "operators/permissions.html",
-        {"user": user, "target": target, "apps": apps, "granted": granted},
+        "operators/detail.html",
+        {
+            "user": user,
+            "target": target,
+            "aba": aba,
+            "apps": apps,
+            "granted": granted,
+            "app_clients": app_clients,
+            "clients": clients,
+            "pw_state": _password_states(db, [target])[target.id],
+        },
+    )
+
+
+@router.get("/operadores/{user_id}/permissoes")
+def operator_permissions(user_id: int):
+    # Rota antiga: as permissões agora ficam na aba "Sistemas" do usuário.
+    return RedirectResponse(
+        f"/operadores/{user_id}?aba=sistemas", status_code=status.HTTP_302_FOUND
     )
 
 
@@ -569,9 +630,42 @@ async def operator_permissions_save(
             description=f"Permissões de {target.username}: +{added} / -{removed}",
             request=request, meta={"added": added, "removed": removed}, commit=False,
         )
+
+    # Cliente do usuário em cada sistema (campos "client_app_<app_id>"; vazio = sem vínculo)
+    valid_client_ids = {c.id for c in db.scalars(select(Client)).all()}
+    links = {
+        r.application_id: r
+        for r in db.scalars(select(UserAppClient).where(UserAppClient.user_id == user_id)).all()
+    }
+    app_ids = {a.id for a in db.scalars(select(Application)).all()}
+    clients_changed = 0
+    for key in form.keys():
+        if not key.startswith("client_app_") or not key[11:].isdigit():
+            continue
+        app_id = int(key[11:])
+        if app_id not in app_ids:
+            continue
+        raw_value = str(form.get(key) or "").strip()
+        wanted = int(raw_value) if raw_value.isdigit() and int(raw_value) in valid_client_ids else None
+        current_link = links.get(app_id)
+        if wanted is None and current_link is not None:
+            db.delete(current_link)
+            clients_changed += 1
+        elif wanted is not None and current_link is None:
+            db.add(UserAppClient(user_id=user_id, application_id=app_id, client_id=wanted))
+            clients_changed += 1
+        elif wanted is not None and current_link.client_id != wanted:
+            current_link.client_id = wanted
+            clients_changed += 1
+    if clients_changed:
+        audit.record(
+            db, "user.app_clients", actor=user, target_type="user", target_id=target.id,
+            description=f"Clientes por sistema de {target.username}: {clients_changed} alteração(ões)",
+            request=request, meta={"changed": clients_changed}, commit=False,
+        )
     db.commit()
     return RedirectResponse(
-        f"/operadores/{user_id}/permissoes", status_code=status.HTTP_302_FOUND
+        f"/operadores/{user_id}?aba=sistemas", status_code=status.HTTP_302_FOUND
     )
 
 
