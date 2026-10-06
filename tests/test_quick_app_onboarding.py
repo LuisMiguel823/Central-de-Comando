@@ -116,3 +116,40 @@ def test_sync_permissions_rejects_bad_credentials_and_codes(admin_client):
         assert db.scalars(select(Permission).where(Permission.application_id == a.id)).first() is None
     finally:
         db.close()
+
+
+def test_sync_access_creates_users_grants_and_never_revokes(admin_client):
+    from app.models import User, UserAppPermission
+
+    slug, cid, secret = _creds(admin_client, "Sistema Acesso Um")
+    anon = TestClient(app)
+    body = {
+        "client_id": cid,
+        "client_secret": secret,
+        "users": [
+            {"email": "Maria@Empresa.com", "full_name": "Maria", "permissions": ["faq.editar", "faq.ver"]},
+            {"email": "invalido", "permissions": ["faq.ver"]},
+        ],
+    }
+    r = anon.post("/api/v1/apps/access/sync", json=body)
+    assert r.status_code == 200, r.text
+    j = r.json()
+    assert j["users_created"] == 1 and j["grants_added"] == 2 and j["skipped_invalid_email"] == ["invalido"]
+
+    again = anon.post("/api/v1/apps/access/sync", json=body).json()
+    assert again["users_created"] == 0 and again["grants_added"] == 0
+
+    # lista menor não revoga o que já foi concedido
+    body["users"] = [{"email": "maria@empresa.com", "permissions": ["faq.ver"]}]
+    anon.post("/api/v1/apps/access/sync", json=body)
+
+    db = SessionLocal()
+    try:
+        u = db.scalar(select(User).where(User.email == "maria@empresa.com"))
+        assert u is not None and u.password_hash is None
+        assert len(db.scalars(select(UserAppPermission).where(UserAppPermission.user_id == u.id)).all()) == 2
+    finally:
+        db.close()
+
+    bad = anon.post("/api/v1/apps/access/sync", json={**body, "client_secret": "errado"})
+    assert bad.status_code == 401

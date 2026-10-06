@@ -11,7 +11,8 @@ from app.core import audit
 from app.core.deps import get_api_user, require_api_admin
 from app.core.security import decode_jwt, utcnow, verify_password
 from app.database import get_db
-from app.models import Application, Client, OAuthToken, Permission, User
+from app.models import Application, Client, OAuthToken, Permission, User, UserAppPermission
+from app.services.permissions import grant as grant_permission
 from app.services.permissions import permissions_for
 
 router = APIRouter(prefix="/api/v1", tags=["api"])
@@ -215,6 +216,112 @@ def sync_permissions(
         "updated": updated,
         "unchanged": len(wanted) - created - updated,
         "total_in_catalog": len(existing) + created,
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Importação de acessos — o sistema satélite manda quem tem qual permissão hoje
+# (ex.: antigos is_staff). Quem ainda não existe na Central é criado sem senha e
+# entra pelo login federado (casa por e-mail). Só concede: NUNCA revoga.
+# --------------------------------------------------------------------------- #
+_MAX_SYNC_USERS = 1000
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class AccessUserIn(BaseModel):
+    email: str
+    full_name: str | None = None
+    permissions: list[str]
+
+
+class AccessSyncIn(BaseModel):
+    client_id: str
+    client_secret: str
+    users: list[AccessUserIn]
+
+
+@router.post("/apps/access/sync")
+def sync_access(
+    body: AccessSyncIn,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    app = db.scalar(select(Application).where(Application.oauth_client_id == body.client_id))
+    if (
+        app is None
+        or not app.is_active
+        or not verify_password(body.client_secret, app.oauth_client_secret_hash)
+    ):
+        raise HTTPException(status_code=401, detail="client inválido.")
+    if len(body.users) > _MAX_SYNC_USERS:
+        raise HTTPException(
+            status_code=400, detail=f"Máximo de {_MAX_SYNC_USERS} usuários por chamada."
+        )
+
+    catalog = {p.code: p for p in app.permissions}
+    users_created = grants_added = 0
+    skipped: list[str] = []
+
+    for item in body.users:
+        email = item.email.strip().lower()
+        if not _EMAIL_RE.match(email) or len(email) > 254:
+            skipped.append(item.email)
+            continue
+        codes = {c.strip().lower() for c in item.permissions}
+        for code in codes:
+            if not _PERM_CODE_RE.match(code):
+                raise HTTPException(status_code=400, detail=f"code inválido: '{code}'.")
+
+        user = db.scalar(select(User).where(User.email == email))
+        if user is None:
+            base = email.split("@")[0][:48] or "usuario"
+            username, i = base, 1
+            while db.scalar(select(User).where(User.username == username)):
+                username = f"{base}{i}"
+                i += 1
+            user = User(
+                username=username,
+                email=email,
+                full_name=(item.full_name or "").strip()[:200] or base,
+                password_hash=None,
+                is_active=True,
+            )
+            db.add(user)
+            db.flush()
+            users_created += 1
+
+        for code in sorted(codes):
+            perm = catalog.get(code)
+            if perm is None:
+                perm = Permission(application_id=app.id, code=code, name=code)
+                db.add(perm)
+                db.flush()
+                catalog[code] = perm
+            before = db.scalar(
+                select(UserAppPermission.id).where(
+                    UserAppPermission.user_id == user.id,
+                    UserAppPermission.permission_id == perm.id,
+                )
+            )
+            if before is None:
+                grant_permission(db, user=user, permission=perm, granted_by=None)
+                grants_added += 1
+
+    audit.record(
+        db, "permission.access_sync_api", actor_label=f"app:{app.slug}",
+        target_type="application", target_id=app.id,
+        description=f"Sistema {app.slug} importou acessos via API: {users_created} usuário(s) novo(s), +{grants_added} concessão(ões)",
+        request=request,
+        meta={"users_created": users_created, "grants_added": grants_added, "skipped": skipped},
+        commit=False,
+    )
+    db.commit()
+    return {
+        "app": app.slug,
+        "users_received": len(body.users),
+        "users_created": users_created,
+        "grants_added": grants_added,
+        "skipped_invalid_email": skipped,
     }
 
 

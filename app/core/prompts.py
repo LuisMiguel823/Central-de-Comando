@@ -101,6 +101,19 @@ curl -X POST {BASE_URL_CENTRAL}/api/v1/apps/permissions/sync \\
 A resposta traz quantas permissões foram criadas/atualizadas. Depois disso o
 administrador da Central já consegue conceder cada permissão aos usuários.
 
+PASSO 2b — IMPORTAR QUEM JÁ TEM ACESSO (automático, uma chamada)
+Se o sistema já tem usuários com poderes (is_staff, roles, flags), NÃO peça
+cadastro manual: envie e-mail + permissões de cada um. Quem não existe na
+Central é criado sem senha e entra pelo login federado (casa por e-mail).
+Só concede, nunca revoga. Rode ANTES de apagar os dados locais de permissão.
+
+curl -X POST {BASE_URL_CENTRAL}/api/v1/apps/access/sync \\
+  -H "Content-Type: application/json" \\
+  -d '{"client_id": "{CLIENT_ID}", "client_secret": "<o client_secret acima>",
+       "users": [
+         {"email": "maria@empresa.com", "full_name": "Maria", "permissions": ["contratos.assinar"]}
+       ]}'
+
 PASSO 3 — LOGIN E CONTROLE DE ACESSO VIA CENTRAL
 {IMPLEMENTATION}
 {TENANT}
