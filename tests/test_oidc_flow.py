@@ -172,3 +172,23 @@ def test_token_rejects_bad_secret(admin_client, oidc_app):
         },
     )
     assert r.status_code == 401
+
+
+def test_authorize_prompt_login_forces_credentials(admin_client, oidc_app):
+    params = {
+        "response_type": "code",
+        "client_id": oidc_app["client_id"],
+        "redirect_uri": REDIRECT,
+        "scope": "openid",
+        "state": "xyz",
+    }
+    # admin já logado: com prompt=login NÃO entrega o code, pede login de novo
+    r = admin_client.get(
+        "/oauth/authorize", params={**params, "prompt": "login", "max_age": "0"},
+        follow_redirects=False,
+    )
+    assert r.status_code == 302
+    assert "prompt" not in r.headers["location"] and "max_age" not in r.headers["location"]
+    r = admin_client.get(r.headers["location"], follow_redirects=False)
+    assert r.status_code == 302
+    assert r.headers["location"].startswith("/login?next=")

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 from datetime import timedelta
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -65,6 +65,19 @@ def authorize(
     allowed = set(app.scope_list) | {"openid", "profile", "email"}
     if not requested.issubset(allowed):
         raise HTTPException(status_code=400, detail="scope não permitido para este app.")
+
+    # OIDC: prompt=login (ou max_age=0) obriga a pedir credenciais de novo, mesmo
+    # com sessão ativa (ex.: admin logado testando o sistema como outro usuário).
+    # Encerra a sessão e volta ao /authorize sem esses parâmetros, senão faria loop.
+    params = dict(request.query_params)
+    if "login" in (params.get("prompt") or "").split() or params.get("max_age") == "0":
+        request.session.clear()
+        params.pop("prompt", None)
+        params.pop("max_age", None)
+        return RedirectResponse(
+            f"/oauth/authorize?{urlencode(params)}",
+            status_code=status.HTTP_302_FOUND,
+        )
 
     uid = request.session.get("uid")
     if not uid:
