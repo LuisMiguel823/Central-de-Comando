@@ -8,13 +8,11 @@ from app.models import Application, Permission, User, UserAppPermission
 
 
 def permissions_for(db: Session, user: User, app: Application) -> list[str]:
-    """Códigos de permissão que o operador possui no app informado."""
-    if user.is_superuser:
-        rows = db.scalars(
-            select(Permission.code).where(Permission.application_id == app.id)
-        ).all()
-        return sorted(rows)
+    """Códigos de permissão que o operador possui no app informado.
 
+    Só vale o que foi CONCEDIDO a ele neste app: ser administrador da Central
+    (is_superuser) não dá acesso automático aos sistemas satélite.
+    """
     now = utcnow()
     stmt = (
         select(Permission.code)

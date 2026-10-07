@@ -117,7 +117,7 @@ subheading %}
       {{ f.field("password", "Senha (deixe vazio p/ só gov.br)", type="password", span=True) }}
       {{ client_select(clients) }}
       <div class="flex items-end gap-4">
-        {{ f.checkbox("is_superuser", "Administrador") }}
+        {{ f.checkbox("is_superuser", "Administrador da Central (só gerencia a Central)") }}
         {{ f.checkbox("is_active", "Ativo", checked=True) }}
       </div>
       <div class="sm:col-span-2 mt-2 flex justify-end gap-2">

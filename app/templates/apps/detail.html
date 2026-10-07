@@ -61,7 +61,6 @@
   <div class="mod-stats">
     <div><b>{{ total_perms }}</b><span>permiss{{ "ão" if total_perms == 1 else "ões" }}</span></div>
     <div><b>{{ with_access }}</b><span>pessoa{{ "" if with_access == 1 else "s" }} com acesso</span></div>
-    {% if admins_count %}<div><b>{{ admins_count }}</b><span>admin{{ "" if admins_count == 1 else "s" }} (acesso total)</span></div>{% endif %}
   </div>
 
   <div class="mod-actions">
@@ -148,11 +147,16 @@
 <section>
   <div class="sec-title">
     <h2>Quem tem acesso</h2>
-    {% if total_perms and operators %}
-    <div class="search-field w-56">
-      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-      <input id="acc-search" type="search" placeholder="Buscar pessoa" autocomplete="off"
-        class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none placeholder:text-slate-400" />
+    {% if total_perms %}
+    <div class="flex items-center gap-2">
+      {% if candidates %}<button type="button" data-open-modal="add-member" class="btn-tiny">+ Adicionar pessoa</button>{% endif %}
+      {% if operators %}
+      <div class="search-field w-56">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+        <input id="acc-search" type="search" placeholder="Buscar pessoa" autocomplete="off"
+          class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none placeholder:text-slate-400" />
+      </div>
+      {% endif %}
     </div>
     {% endif %}
   </div>
@@ -226,14 +230,14 @@
       </div>
     </details>
     {% else %}
-    <div class="empty-state"><p class="text-sm">Nenhum usuário (não administrador) cadastrado ainda.</p></div>
+    <div class="empty-state"><p class="text-sm">Ninguém tem acesso a este sistema ainda. Use "+ Adicionar pessoa".</p></div>
     {% endfor %}
   </div>
   <p id="acc-empty" class="hidden py-6 text-center text-sm text-slate-400">Ninguém encontrado com essa busca.</p>
 
   {% if operators %}
   <div class="sticky bottom-3 z-10 mt-4 flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white/90 px-4 py-3 backdrop-blur">
-    <p class="text-xs text-slate-500">Abra uma pessoa, marque o que ela pode fazer e salve. Administradores têm acesso total e não aparecem aqui.</p>
+    <p class="text-xs text-slate-500">Aqui só aparece quem tem acesso a este sistema. Abra uma pessoa, marque o que ela pode fazer e salve; tirar todas as marcas remove a pessoa daqui. Ser administrador da Central não dá acesso automático.</p>
     <button type="submit" form="perms-form" class="btn-primary shrink-0 rounded-xl px-5 py-2 text-sm font-semibold">Salvar permissões</button>
   </div>
   {% endif %}
@@ -324,6 +328,36 @@
       <div class="sm:col-span-2 mt-2 flex justify-end gap-2">
         <button type="button" data-close-modal="edit-app" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600">Cancelar</button>
         <button class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: adicionar pessoa a este sistema -->
+<div id="add-member" class="modal-overlay fixed inset-0 z-40 hidden items-center justify-center p-4">
+  <div class="w-full max-w-lg rounded-2xl border border-slate-100 bg-white p-6">
+    <h3 class="text-lg font-semibold text-slate-800">Adicionar pessoa a {{ app.name }}</h3>
+    <p class="mt-1 text-xs text-slate-500">Escolha alguém que já existe na Central (administradores também) e marque o que ela pode fazer neste sistema.</p>
+    <form method="post" action="/apps/{{ app.id }}/usuarios/adicionar" class="mt-4 grid max-h-[70vh] gap-3 overflow-y-auto pr-1">
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700">Pessoa</label>
+        <select name="user_id" required class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20">
+          <option value="">— escolha —</option>
+          {% for c in candidates %}<option value="{{ c.id }}">{{ c.full_name }} — {{ c.email }}{{ " (admin da Central)" if c.is_superuser }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="flex gap-2 text-xs">
+        <button type="button" class="btn-tiny" onclick="this.closest('form').querySelectorAll('input[name=permission_id]').forEach(function(i){i.checked=true})">Marcar todas</button>
+        <button type="button" class="btn-tiny" style="--hue: 100 116 108" onclick="this.closest('form').querySelectorAll('input[name=permission_id]').forEach(function(i){i.checked=false})">Limpar</button>
+      </div>
+      <div class="grid gap-1.5 sm:grid-cols-2">
+        {% for p in app.permissions %}
+        <label class="perm-check" title="{{ p.description or p.code }}"><input type="checkbox" name="permission_id" value="{{ p.id }}" /><span>{{ p.name }}</span></label>
+        {% endfor %}
+      </div>
+      <div class="mt-2 flex justify-end gap-2">
+        <button type="button" data-close-modal="add-member" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600">Cancelar</button>
+        <button class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">Adicionar</button>
       </div>
     </form>
   </div>

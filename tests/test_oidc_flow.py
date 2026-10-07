@@ -79,8 +79,8 @@ def test_authorization_code_flow(admin_client, oidc_app):
     assert r.status_code == 200, r.text
     info = r.json()
     assert info["sub"]
-    # admin herda todas as permissões do app
-    assert set(info["permissions"]) == {"teste.ler", "teste.editar"}
+    # admin da Central NÃO herda permissões dos sistemas: só o que foi concedido
+    assert info["permissions"] == [] and info["roles"] == []
 
     # 4) introspect
     r = admin_client.post(
@@ -93,6 +93,7 @@ def test_authorization_code_flow(admin_client, oidc_app):
     )
     assert r.status_code == 200, r.text
     assert r.json()["active"] is True
+    assert r.json()["permissions"] == [] and "is_superuser" not in r.json()
 
     # 5) refresh_token
     r = admin_client.post(
@@ -212,3 +213,45 @@ def test_authorize_tolerates_trailing_slash(admin_client, oidc_app):
         follow_redirects=False,
     )
     assert r.status_code == 302 and r.headers["location"].startswith(REDIRECT + "/?code=")
+
+
+def test_central_admin_only_sees_systems_it_was_granted(admin_client, oidc_app):
+    """Admin da Central é admin só da Central: entra no sistema só depois de
+    receber permissão ali, e só então aparece na lista de pessoas do módulo."""
+    from sqlalchemy import select
+
+    from app.models import Permission, User
+
+    db = SessionLocal()
+    try:
+        admin = db.scalar(select(User).where(User.is_superuser.is_(True)))
+        perm = db.scalar(select(Permission).where(
+            Permission.application_id == oidc_app["id"], Permission.code == "teste.ler"))
+        admin_email, perm_id, admin_id = admin.email, perm.id, admin.id
+    finally:
+        db.close()
+
+    page = admin_client.get("/apps/app-teste-oidc").text
+    assert f'<option value="{admin_id}">' in page  # admin é candidato, não membro
+    assert f'<span class="acc-mail">{admin_email}</span>' not in page
+
+    r = admin_client.post(
+        f"/apps/{oidc_app['id']}/usuarios/adicionar",
+        data={"user_id": admin_id, "permission_id": perm_id}, follow_redirects=False,
+    )
+    assert r.status_code == 302
+
+    page = admin_client.get("/apps/app-teste-oidc").text
+    assert f'<option value="{admin_id}">' not in page  # agora é membro
+    assert f'<span class="acc-mail">{admin_email}</span>' in page
+
+    from app.models import Application
+    from app.services import oidc
+
+    db = SessionLocal()
+    try:
+        claims = oidc.userinfo_claims(
+            db, db.get(User, admin_id), db.get(Application, oidc_app["id"]), "openid")
+        assert claims["permissions"] == ["teste.ler"] and claims["roles"] == []
+    finally:
+        db.close()

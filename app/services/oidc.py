@@ -30,7 +30,7 @@ def userinfo_claims(db: Session, user: User, app: Application, scope: str) -> di
         claims.update({"email": user.email, "email_verified": True})
     # permissões do usuário no app que pediu o token
     claims["permissions"] = permissions_for(db, user, app)
-    claims["roles"] = ["superuser"] if user.is_superuser else []
+    claims["roles"] = []  # admin da Central NÃO vira papel nos sistemas satélite
     client = effective_client(db, user, app)
     if client is not None:
         claims["client_id"] = client.id

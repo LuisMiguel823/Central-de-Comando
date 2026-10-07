@@ -46,7 +46,7 @@
         </select>
       </div>
       <div class="flex items-end gap-4 sm:col-span-2">
-        {{ f.checkbox("is_superuser", "Administrador", checked=target.is_superuser) }}
+        {{ f.checkbox("is_superuser", "Administrador da Central (só gerencia a Central)", checked=target.is_superuser) }}
         {{ f.checkbox("is_active", "Ativo", checked=target.is_active) }}
       </div>
       <div class="sm:col-span-2 mt-2 flex justify-end">
@@ -113,8 +113,8 @@
 <!-- ------------------------------------------------------------- Sistemas -->
 {% if target.is_superuser %}
 <div class="mb-4 rounded-lg border border-violet-200 bg-violet-100 px-4 py-3 text-sm text-violet-700">
-  Este usuário é <strong>Administrador</strong> — tem todas as permissões de todos os sistemas,
-  independentemente das marcações abaixo.
+  Este usuário é <strong>Administrador da Central</strong>: gerencia a Central, mas
+  <strong>não recebe acesso automático aos sistemas</strong>. Só vale o que estiver marcado abaixo.
 </div>
 {% endif %}
 

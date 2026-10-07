@@ -91,7 +91,6 @@ def my_permissions(
         "user_id": user.id,
         "username": user.username,
         "permissions": permissions_for(db, user, app),
-        "is_superuser": user.is_superuser,
     }
 
 
@@ -136,7 +135,6 @@ def introspect(
         "exp": payload["exp"],
         "iat": payload["iat"],
         "permissions": permissions_for(db, user, app),
-        "is_superuser": user.is_superuser,
     }
 
 

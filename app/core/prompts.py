@@ -64,8 +64,11 @@ DADOS DA INTEGRAÇÃO
    emergência se a Central cair).
 4. O painel técnico do framework (ex.: /admin/ do Django) fica só para
    superusuário local, como acesso de emergência. Não remova.
-5. Quem é administrador na Central recebe automaticamente TODAS as permissões
-   deste sistema. Permissão com prefixo "admin_" significa Super Admin global.
+5. Ser administrador da Central NÃO dá nenhum acesso a este sistema: o token só
+   traz as permissões concedidas explicitamente a cada pessoa NESTE sistema. Não
+   trate "roles", "is_superuser" nem nada vindo da Central como admin local;
+   admin deste sistema = ter a(s) permissão(ões) correspondente(s) na lista
+   "permissions" (ex.: prefixo "admin_" = Super Admin deste sistema).
 6. Nomes de pessoas vêm do cadastro da Central e são atualizados a cada login.
 7. Se o seu ambiente bloquear (modo automático, aprovação) edições de
    autorização, NÃO contorne: pare, diga qual comando foi bloqueado e peça

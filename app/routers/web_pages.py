@@ -1063,6 +1063,33 @@ async def apps_sync_users(
     return RedirectResponse(f"/apps/{app.slug}", status_code=status.HTTP_302_FOUND)
 
 
+@router.post("/apps/{app_id}/usuarios/adicionar")
+async def apps_add_member(
+    app_id: int,
+    request: Request,
+    user_id: int = Form(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_web_admin),
+):
+    """Dá a uma pessoa da Central (admin inclusive) acesso a ESTE sistema, com as
+    permissões marcadas. Sem nenhuma permissão marcada não há o que conceder."""
+    app = db.get(Application, app_id) or _404("Sistema")
+    target = db.get(User, user_id) or _404("Usuário")
+    form = await request.form()
+    wanted = {int(v) for v in form.getlist("permission_id") if str(v).isdigit()}
+    perms = [p for p in app.permissions if p.id in wanted]
+    for perm in perms:
+        perm_service.grant(db, user=target, permission=perm, granted_by=user)
+    if perms:
+        audit.record(
+            db, "permission.sync", actor=user, target_type="application", target_id=app.id,
+            description=f"{target.username} ganhou acesso a {app.slug}: +{len(perms)} permissão(ões)",
+            request=request, meta={"added": len(perms), "user_id": target.id}, commit=False,
+        )
+    db.commit()
+    return RedirectResponse(f"/apps/{app.slug}", status_code=status.HTTP_302_FOUND)
+
+
 # --------------------------------------------------------------------------- #
 # Página do módulo (um sistema por vez). Rotas literais /apps/<algo> novas
 # precisam ser registradas ANTES desta genérica {slug}, senão o Starlette casa
@@ -1081,10 +1108,8 @@ def app_detail(
         .where(Application.slug == slug)
     ) or _404("Sistema")
     clients = db.scalars(select(Client).order_by(Client.name)).all()
-    operators = db.scalars(
-        select(User)
-        .where(User.is_superuser.is_(False))
-        .order_by(User.is_active.desc(), User.full_name)
+    all_users = db.scalars(
+        select(User).order_by(User.is_active.desc(), User.full_name)
     ).all()
     grants = db.scalars(
         select(UserAppPermission).where(UserAppPermission.application_id == app.id)
@@ -1100,19 +1125,15 @@ def app_detail(
         ).all()
     }
     clients_by_id = {c.id: c for c in clients}
-    # quem já tem acesso aparece primeiro; depois os sem acesso, por nome
+    # Só aparece aqui quem TEM acesso a este sistema (alguma permissão concedida ou
+    # cliente vinculado). Ser admin da Central não dá acesso: admin só aparece se
+    # alguém concedeu algo a ele aqui. Quem não está na lista entra por "Adicionar pessoa".
+    member_ids = set(granted_count) | set(app_clients)
     operators = sorted(
-        operators,
+        (u for u in all_users if u.id in member_ids),
         key=lambda u: (-granted_count.get(u.id, 0), not u.is_active, (u.full_name or "").lower()),
     )
-    admins_count = int(
-        db.scalar(
-            select(func.count(User.id)).where(
-                User.is_superuser.is_(True), User.is_active.is_(True)
-            )
-        )
-        or 0
-    )
+    candidates = [u for u in all_users if u.id not in member_ids and u.is_active]
 
     new_secret = request.session.pop("new_app_secret", None)
     package = None
@@ -1167,7 +1188,7 @@ def app_detail(
             "clients_by_id": clients_by_id,
             "app_clients": app_clients,
             "operators": operators,
-            "admins_count": admins_count,
+            "candidates": candidates,
             "granted_pairs": granted_pairs,
             "granted_count": granted_count,
             "new_secret": new_secret,

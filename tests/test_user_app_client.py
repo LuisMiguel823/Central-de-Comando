@@ -4,7 +4,15 @@ from sqlalchemy import select
 
 from app.core.security import hash_password
 from app.database import SessionLocal
-from app.models import Application, Client, ClientTier, User, UserAppClient
+from app.models import (
+    Application,
+    Client,
+    ClientTier,
+    Permission,
+    User,
+    UserAppClient,
+    UserAppPermission,
+)
 from app.services import oidc
 
 
@@ -52,6 +60,15 @@ def test_module_page_saves_and_clears_client_per_system(admin_client):
         app1, cli, u = _mk(db)
         app_id, uid, cid = app1.id, u.id, cli.id
         db.query(UserAppClient).filter_by(user_id=uid, application_id=app_id).delete()
+        # a página do módulo só lista quem tem acesso ao sistema: dá uma permissão a ele
+        perm = db.scalar(select(Permission).where(Permission.application_id == app_id))
+        if perm is None:
+            perm = Permission(application_id=app_id, code="uac.ler", name="Ler")
+            db.add(perm)
+            db.flush()
+        if db.scalar(select(UserAppPermission).where(
+                UserAppPermission.user_id == uid, UserAppPermission.permission_id == perm.id)) is None:
+            db.add(UserAppPermission(user_id=uid, application_id=app_id, permission_id=perm.id))
         db.commit()
     finally:
         db.close()
