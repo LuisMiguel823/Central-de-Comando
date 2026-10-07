@@ -58,7 +58,9 @@ def authorize(
 
     if response_type != "code":
         raise HTTPException(status_code=400, detail="response_type não suportado (use 'code').")
-    if redirect_uri not in app.redirect_uri_list:
+    # Tolera só a barra final (".../callback" x ".../callback/"): foi a causa de
+    # um login quebrado no FAQ. O redirect_uri devolvido é o enviado pelo sistema.
+    if redirect_uri.rstrip("/") not in {u.rstrip("/") for u in app.redirect_uri_list}:
         raise HTTPException(status_code=400, detail="redirect_uri não registrado para este app.")
 
     requested = set(scope.split())

@@ -25,10 +25,11 @@
 
 {% if package %}
 <div class="mb-5 rounded-2xl border border-amber-200 bg-amber-100 p-4 text-sm text-amber-700">
-  <p class="font-semibold">Pronto. Mande esta mensagem ao dono do sistema.</p>
+  <p class="font-semibold">Pronto. Cole esta única mensagem na IA ou no desenvolvedor do sistema.</p>
   <p class="mt-1 text-xs">
-    Ela já traz o client_id e o client_secret (que não serão mostrados de novo) e todos os passos.
-    A IA ou o desenvolvedor dele levanta as permissões no código e cadastra aqui sozinho; depois é só conceder o acesso aos usuários.
+    Ela já traz o client_id e o client_secret (que não serão mostrados de novo), as decisões tomadas e todos os passos.
+    Ele cadastra as permissões, importa quem já tinha acesso, faz o login e devolve um relatório,
+    que aparece aqui em "Integração". Se pedir algo da Central, vem pronto para colar no Claude da Central.
   </p>
   <textarea id="integration-package" readonly rows="10"
     class="mt-3 w-full resize-y rounded-lg border border-amber-200 bg-white/70 px-3 py-2 font-mono text-[11px] text-slate-700 outline-none">{{ package }}</textarea>
@@ -78,6 +79,70 @@
     {% endif %}
   </div>
 </div>
+
+<!-- ============ Integração (checklist automático + relatório do sistema) ============ -->
+{% set pending = checklist | rejectattr("ok", "none") | rejectattr("ok") | list %}
+{% set open_requests = (report.central_requests if report else []) %}
+<details class="fold mb-6" {{ "open" if pending or open_requests }}>
+  <summary>
+    <span class="fold-title">
+      Integração
+      {% if pending or open_requests %}
+        <span class="ml-2 text-xs font-medium text-amber-600">{{ pending | length }} passo{{ "" if pending | length == 1 else "s" }} pendente{{ "" if pending | length == 1 else "s" }}{% if open_requests %} · {{ open_requests | length }} pedido{{ "" if open_requests | length == 1 else "s" }} para a Central{% endif %}</span>
+      {% else %}
+        <span class="ml-2 text-xs font-medium text-emerald-600">concluída</span>
+      {% endif %}
+    </span>
+    <svg class="acc-chev ml-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+  </summary>
+  <div class="fold-body">
+    <ul class="grid gap-1.5 text-sm">
+      {% for item in checklist %}
+      <li class="flex items-start gap-2">
+        {% if item.ok is none %}
+          <span class="mt-0.5 text-slate-300">–</span>
+          <span class="text-slate-400">{{ item.label }} <span class="text-xs">(não se aplica)</span></span>
+        {% elif item.ok %}
+          <span class="mt-0.5 text-emerald-600">✓</span>
+          <span class="text-slate-700">{{ item.label }}</span>
+        {% else %}
+          <span class="mt-0.5 text-amber-500">○</span>
+          <span class="text-slate-700">{{ item.label }} <span class="text-xs text-slate-400">— {{ item.hint }}</span></span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+
+    {% if report %}
+    <div class="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm">
+      <p class="font-semibold text-slate-700">
+        Relatório do sistema:
+        {{ {"completed": "concluído", "partial": "parcial", "blocked": "bloqueado"}.get(report.status, report.status) }}
+        {% if app.integration_reported_at %}<span class="text-xs font-normal text-slate-400">· {{ app.integration_reported_at.strftime("%d/%m/%Y %H:%M") }} UTC</span>{% endif %}
+      </p>
+      <dl class="mt-2 grid gap-1 text-xs text-slate-600">
+        {% if report.stack %}<div>Tecnologia: {{ report.stack }}</div>{% endif %}
+        {% if report.users_synced is not none %}<div>Pessoas importadas: {{ report.users_synced }}</div>{% endif %}
+        <div>Login: {{ "ok" if report.login_done else "não" }} · "Entrar com outra conta": {{ "ok" if report.switch_account_link else "não" }} · Limpeza local: {{ "feita" if report.phase2_done else "pendente" }}</div>
+        {% if report.redirect_uri_used %}<div>Redirect URI usada: <code>{{ report.redirect_uri_used }}</code></div>{% endif %}
+      </dl>
+      {% if report.unmapped_checks %}
+      <p class="mt-2 text-xs font-semibold text-slate-700">Checagens sem permissão correspondente</p>
+      <ul class="list-disc pl-5 text-xs text-slate-600">{% for c in report.unmapped_checks %}<li>{{ c }}</li>{% endfor %}</ul>
+      {% endif %}
+      {% if report.notes %}<p class="mt-2 text-xs text-slate-600">{{ report.notes }}</p>{% endif %}
+      {% if open_requests %}
+      <p class="mt-3 text-xs font-semibold text-amber-700">Pedidos para a Central — cole no Claude da Central para aplicar:</p>
+      <textarea id="central-requests" readonly rows="{{ [open_requests | length + 3, 8] | min }}"
+        class="mt-1 w-full resize-y rounded-lg border border-amber-200 bg-white px-3 py-2 font-mono text-[11px] text-slate-700 outline-none">Sistema "{{ app.name }}" ({{ app.slug }}) terminou a integração e pede estes ajustes na Central:
+{% for r in open_requests %}- {{ r }}
+{% endfor %}</textarea>
+      <div class="mt-1.5 flex justify-end"><button type="button" data-copy-target="central-requests" class="btn-tiny">Copiar pedidos</button></div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</details>
 
 <!-- ============ Quem tem acesso ============ -->
 <section>
@@ -250,7 +315,12 @@
       {{ f.field("allowed_scopes", "Scopes", value=app.allowed_scopes, span=True) }}
       {{ client_select(clients, app.client_id or "") }}
       {{ f.textarea_field("description", "Descrição", value=app.description or "", rows=2) }}
-      <div class="sm:col-span-2">{{ f.checkbox("is_active", "Sistema ativo", checked=app.is_active) }}</div>
+      {{ f.select_field("stack", "Tecnologia do sistema", stack_options, selected=app.stack or "", blank="Não sei") }}
+      <div class="sm:col-span-2 grid gap-2">
+        {{ f.checkbox("has_local_access", "Já tinha usuários com poderes (importar para a Central)", checked=app.has_local_access) }}
+        {{ f.checkbox("multi_client", "Atende vários clientes (client_code)", checked=app.multi_client) }}
+        {{ f.checkbox("is_active", "Sistema ativo", checked=app.is_active) }}
+      </div>
       <div class="sm:col-span-2 mt-2 flex justify-end gap-2">
         <button type="button" data-close-modal="edit-app" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600">Cancelar</button>
         <button class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">Salvar</button>

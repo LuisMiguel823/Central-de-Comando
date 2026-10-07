@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -37,6 +38,14 @@ class Application(TimestampMixin, Base):
     )
     is_confidential: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Perfil de integração (preenchido no "Novo sistema"; alimenta o prompt único)
+    stack: Mapped[str | None] = mapped_column(String(40))
+    multi_client: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    has_local_access: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Relatório que o próprio sistema devolve ao terminar (POST /api/v1/apps/integration/report)
+    integration_report: Mapped[dict | None] = mapped_column(JSON)
+    integration_reported_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     client: Mapped["Client | None"] = relationship(back_populates="applications")
     permissions: Mapped[list["Permission"]] = relationship(

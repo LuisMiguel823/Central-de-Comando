@@ -202,3 +202,13 @@ def test_integration_package_mentions_switch_account():
         redirect_uris="https://x/cb", multi_client=False,
     )
     assert "Entrar com outra conta" in pkg and "prompt=login" in pkg
+
+
+def test_authorize_tolerates_trailing_slash(admin_client, oidc_app):
+    r = admin_client.get(
+        "/oauth/authorize",
+        params={"response_type": "code", "client_id": oidc_app["client_id"],
+                "redirect_uri": REDIRECT + "/", "scope": "openid"},
+        follow_redirects=False,
+    )
+    assert r.status_code == 302 and r.headers["location"].startswith(REDIRECT + "/?code=")

@@ -55,11 +55,15 @@ subheading %}
   <div class="w-full max-w-lg rounded-2xl border border-slate-100 bg-white p-6">
     <h3 class="text-lg font-semibold text-slate-800">Novo sistema</h3>
     <p class="mt-1 text-xs text-slate-500">
-      Só o nome e o endereço de retorno do login. Ao criar, você recebe uma mensagem pronta para mandar ao dono do sistema.
+      Responda o que souber. Ao criar, você recebe UMA mensagem completa para colar na IA ou no desenvolvedor do sistema; ele devolve um relatório e pronto.
     </p>
-    <form method="post" action="/apps" class="mt-4 grid gap-3">
+    <form method="post" action="/apps" class="mt-4 grid max-h-[70vh] gap-3 overflow-y-auto pr-1">
       {{ f.field("name", "Nome do sistema", required=True, placeholder="Ex.: Protocolo Digital") }}
+      {{ f.field("base_url", "Endereço do sistema (opcional)", placeholder="https://sistema.exemplo.gov.br") }}
       {{ f.textarea_field("redirect_uris", "Endereço de retorno do login (callback) — um por linha", rows=2, placeholder="https://sistema.exemplo.gov.br/auth/central/callback") }}
+      {{ f.field("description", "O que o sistema faz (opcional, 1 linha)", placeholder="Ex.: Base de conhecimento interna") }}
+      {{ f.select_field("stack", "Tecnologia do sistema", stack_options, blank="Não sei / deixar a IA descobrir") }}
+      {{ f.checkbox("has_local_access", "Já tem usuários com poderes hoje (is_staff, perfis, flags) — importar para a Central", checked=True) }}
       {{ f.checkbox("multi_client", "Atende vários clientes (a Central envia o client_code)") }}
       <div class="mt-2 flex justify-end gap-2">
         <button type="button" data-close-modal="modal-new" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600">Cancelar</button>

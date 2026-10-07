@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.config import settings
 from app.core import audit
-from app.core.prompts import build_integration_package
+from app.core.prompts import STACK_LABELS, build_integration_package
 from app.core.deps import require_web_admin, require_web_user
 from app.core.security import (
     generate_client_id,
@@ -40,6 +40,8 @@ from app.services import (
 )
 
 router = APIRouter(include_in_schema=False)
+
+STACK_OPTIONS = [{"value": k, "label": v} for k, v in STACK_LABELS.items()]
 
 
 def _back(request: Request, fallback: str) -> str:
@@ -787,6 +789,7 @@ def apps_list(
             "clients": clients,
             "granted_users_count": granted_users_count,
             "new_secret": new_secret,
+            "stack_options": STACK_OPTIONS,
         },
     )
 
@@ -802,6 +805,8 @@ def apps_create(
     client_id: str = Form(""),
     allowed_scopes: str = Form("openid profile email"),
     multi_client: str = Form(""),
+    stack: str = Form(""),
+    has_local_access: str = Form(""),
     db: Session = Depends(get_db),
     user: User = Depends(require_web_admin),
 ):
@@ -821,6 +826,9 @@ def apps_create(
         redirect_uris=redirect_uris.strip(),
         client_id=int(client_id) if client_id else None,
         allowed_scopes=allowed_scopes.strip() or "openid profile email",
+        stack=stack if stack in STACK_LABELS else None,
+        multi_client=multi_client == "on",
+        has_local_access=has_local_access == "on",
         oauth_client_id=generate_client_id(),
         oauth_client_secret_hash=hash_password(secret),
     )
@@ -833,7 +841,6 @@ def apps_create(
         "slug": app.slug,
         "client_id": app.oauth_client_id,
         "client_secret": secret,
-        "multi_client": multi_client == "on",
     }
     # Vai direto pra página do sistema, onde o pacote de integração já está pronto.
     return RedirectResponse(f"/apps/{app.slug}", status_code=status.HTTP_302_FOUND)
@@ -850,10 +857,16 @@ def apps_update(
     client_id: str = Form(""),
     allowed_scopes: str = Form("openid profile email"),
     is_active: str = Form(""),
+    stack: str = Form(""),
+    multi_client: str = Form(""),
+    has_local_access: str = Form(""),
     db: Session = Depends(get_db),
     user: User = Depends(require_web_admin),
 ):
     app = db.get(Application, app_id) or _404("Aplicação")
+    app.stack = stack if stack in STACK_LABELS else None
+    app.multi_client = multi_client == "on"
+    app.has_local_access = has_local_access == "on"
     app.name = name.strip()
     app.description = description.strip() or None
     app.base_url = base_url.strip() or None
@@ -1110,8 +1123,40 @@ def app_detail(
             client_secret=new_secret["client_secret"],
             central_url=settings.base_url,
             redirect_uris=app.redirect_uris,
-            multi_client=bool(new_secret.get("multi_client")),
+            multi_client=app.multi_client,
+            base_url=app.base_url or "",
+            stack=app.stack or "",
+            description=app.description or "",
+            has_local_access=app.has_local_access,
         )
+
+    # Checklist da integração, todo derivado do que a Central já sabe.
+    app_key = str(app.id)
+
+    def _seen(action: str) -> bool:
+        return (
+            db.scalar(
+                select(AuditEvent.id)
+                .where(AuditEvent.action == action, AuditEvent.target_id == app_key)
+                .limit(1)
+            )
+            is not None
+        )
+
+    report = app.integration_report or None
+    checklist = [
+        {"label": "Endereço de retorno cadastrado", "ok": bool(app.redirect_uri_list),
+         "hint": "Edite o sistema e informe o callback."},
+        {"label": "Permissões cadastradas", "ok": len(app.permissions) > 0,
+         "hint": "Chegam sozinhas no passo 2 da mensagem."},
+        {"label": "Acessos antigos importados",
+         "ok": _seen("permission.access_sync_api") if app.has_local_access else None,
+         "hint": "Passo 2b da mensagem (só se havia usuários com poderes)."},
+        {"label": "Primeiro login recebido", "ok": _seen("oauth.authorize"),
+         "hint": "Entre no sistema pelo botão da Central."},
+        {"label": "Relatório do sistema recebido", "ok": report is not None,
+         "hint": "O sistema envia ao terminar."},
+    ]
     return render(
         request,
         "apps/detail.html",
@@ -1127,6 +1172,9 @@ def app_detail(
             "granted_count": granted_count,
             "new_secret": new_secret,
             "package": package,
+            "checklist": checklist,
+            "report": report,
+            "stack_options": STACK_OPTIONS,
         },
     )
 

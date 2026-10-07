@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import re
 
@@ -54,8 +54,8 @@ def test_multi_client_flag_adds_tenant_instructions(admin_client):
     pkg_plain = _package(admin_client.get(plain.headers["location"]).text)
     multi = _create(admin_client, name="Sistema Multi Um", multi_client="on")
     pkg_multi = _package(admin_client.get(multi.headers["location"]).text)
-    assert "NUNCA recuse o login" not in pkg_plain
-    assert "NUNCA recuse o login" in pkg_multi
+    assert "MULTI-CLIENTE (este sistema" not in pkg_plain
+    assert "MULTI-CLIENTE (este sistema" in pkg_multi
 
 
 def _creds(admin_client, name):
@@ -153,3 +153,38 @@ def test_sync_access_creates_users_grants_and_never_revokes(admin_client):
 
     bad = anon.post("/api/v1/apps/access/sync", json={**body, "client_secret": "errado"})
     assert bad.status_code == 401
+
+
+def test_profile_fields_shape_the_single_prompt(admin_client):
+    r = _create(
+        admin_client, name="Sistema Perfil Um", base_url="https://perfil.example.com",
+        stack="django", description="Base de conhecimento",
+    )  # sem has_local_access marcado
+    pkg = _package(admin_client.get(r.headers["location"]).text)
+    assert "Django (Python)" in pkg
+    assert "https://perfil.example.com" in pkg and "Base de conhecimento" in pkg
+    assert "NÃO se aplica" in pkg or "NÃO SE APLICA" in pkg
+    assert "/api/v1/apps/integration/report" in pkg
+    assert "Entrar com outra conta" in pkg and "prompt=login" in pkg
+    assert "FASE 1" in pkg and "FASE 2" in pkg
+
+    r2 = _create(admin_client, name="Sistema Perfil Dois", has_local_access="on")
+    pkg2 = _package(admin_client.get(r2.headers["location"]).text)
+    assert "/api/v1/apps/access/sync" in pkg2 and "NÃO SE APLICA" not in pkg2
+
+
+def test_integration_report_is_stored_and_shown(admin_client):
+    slug, cid, secret = _creds(admin_client, "Sistema Relatorio Um")
+    anon = TestClient(app)
+    body = {
+        "client_id": cid, "client_secret": secret, "status": "partial",
+        "permissions": ["a.b"], "login_done": True, "switch_account_link": True,
+        "central_requests": ["cadastrar https://x/cb2/"], "notes": "ok",
+    }
+    assert anon.post("/api/v1/apps/integration/report", json={**body, "client_secret": "x"}).status_code == 401
+    r = anon.post("/api/v1/apps/integration/report", json=body)
+    assert r.status_code == 200 and r.json()["central_requests"] == 1
+
+    page = admin_client.get(f"/apps/{slug}").text
+    assert "cadastrar https://x/cb2/" in page
+    assert "Relatório do sistema" in page and "parcial" in page

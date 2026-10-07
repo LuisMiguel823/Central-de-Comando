@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from pydantic import BaseModel
@@ -322,6 +323,76 @@ def sync_access(
         "users_created": users_created,
         "grants_added": grants_added,
         "skipped_invalid_email": skipped,
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Relatório final de integração — o sistema (ou a IA do dono) devolve o que fez
+# e o que ainda depende da Central. Aparece na página do módulo.
+# --------------------------------------------------------------------------- #
+class IntegrationReportIn(BaseModel):
+    client_id: str
+    client_secret: str
+    status: Literal["completed", "partial", "blocked"] = "completed"
+    stack: str | None = None
+    had_previous_integration: bool | None = None
+    permissions: list[str] = []
+    users_synced: int | None = None
+    login_done: bool | None = None
+    switch_account_link: bool | None = None
+    phase2_done: bool | None = None
+    redirect_uri_used: str | None = None
+    unmapped_checks: list[str] = []
+    central_requests: list[str] = []
+    notes: str | None = None
+
+
+@router.post("/apps/integration/report")
+def integration_report(
+    body: IntegrationReportIn,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    app = db.scalar(select(Application).where(Application.oauth_client_id == body.client_id))
+    if (
+        app is None
+        or not app.is_active
+        or not verify_password(body.client_secret, app.oauth_client_secret_hash)
+    ):
+        raise HTTPException(status_code=401, detail="client inválido.")
+
+    def _clip(items: list[str], n: int = 50, size: int = 500) -> list[str]:
+        return [str(i).strip()[:size] for i in items[:n] if str(i).strip()]
+
+    report = {
+        "status": body.status,
+        "stack": (body.stack or "")[:80] or None,
+        "had_previous_integration": body.had_previous_integration,
+        "permissions": _clip(body.permissions, 300, 100),
+        "users_synced": body.users_synced,
+        "login_done": body.login_done,
+        "switch_account_link": body.switch_account_link,
+        "phase2_done": body.phase2_done,
+        "redirect_uri_used": (body.redirect_uri_used or "")[:500] or None,
+        "unmapped_checks": _clip(body.unmapped_checks),
+        "central_requests": _clip(body.central_requests),
+        "notes": (body.notes or "")[:3000] or None,
+    }
+    app.integration_report = report
+    app.integration_reported_at = utcnow()
+    audit.record(
+        db, "app.integration_report", actor_label=f"app:{app.slug}",
+        target_type="application", target_id=app.id,
+        description=f"Sistema {app.slug} enviou relatório de integração ({body.status}); "
+        f"{len(report['central_requests'])} pedido(s) para a Central",
+        request=request, meta={"status": body.status}, commit=False,
+    )
+    db.commit()
+    return {
+        "app": app.slug,
+        "received": True,
+        "status": body.status,
+        "central_requests": len(report["central_requests"]),
     }
 
 

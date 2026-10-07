@@ -81,7 +81,19 @@ alembic upgrade head
 
 ---
 
-## Como um app satélite se integra
+## Integração em uma mensagem só
+
+**Sistemas → Novo sistema**: preencha nome, endereço, callback, tecnologia,
+"já tem usuários com poderes" e "atende vários clientes". A Central gera UMA
+mensagem completa (decisões já tomadas, fase 1 não destrutiva, fase 2 de limpeza,
+"Entrar com outra conta"). Cole-a na IA/dev do sistema; ele cadastra as
+permissões (`/api/v1/apps/permissions/sync`), importa os acessos
+(`/api/v1/apps/access/sync`) e devolve um relatório
+(`/api/v1/apps/integration/report`). A página do módulo mostra o checklist
+automático e os "pedidos para a Central" prontos para colar. O `/oauth/authorize`
+honra `prompt=login`/`max_age=0` e tolera barra final no callback.
+
+## Como um app satélite se integra (manual)
 
 1. No painel, **Aplicações → Nova aplicação**. Guarde o `client_id` e o
    `client_secret` (mostrado uma única vez) e cadastre o `redirect_uri`.
