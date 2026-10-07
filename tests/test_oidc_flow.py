@@ -192,3 +192,13 @@ def test_authorize_prompt_login_forces_credentials(admin_client, oidc_app):
     r = admin_client.get(r.headers["location"], follow_redirects=False)
     assert r.status_code == 302
     assert r.headers["location"].startswith("/login?next=")
+
+
+def test_integration_package_mentions_switch_account():
+    from app.core.prompts import build_integration_package
+
+    pkg = build_integration_package(
+        name="X", client_id="c", client_secret="s", central_url="https://c.example",
+        redirect_uris="https://x/cb", multi_client=False,
+    )
+    assert "Entrar com outra conta" in pkg and "prompt=login" in pkg

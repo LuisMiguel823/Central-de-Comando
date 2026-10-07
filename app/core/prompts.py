@@ -63,6 +63,15 @@ que já existe) cumpre TODOS os itens abaixo — não é opcional escolher algun
    do controle de acesso local, os outros federations continuam funcionando
    em paralelo até segunda ordem.
 
+8. "Entrar com outra conta": quem está logado no APP CENTRAL (ex.: um admin) cai
+   direto nesta conta ao clicar em "Entrar pela Central", e nunca consegue
+   testar o sistema como outro usuário. Na tela de login, ao lado do botão da
+   Central, coloque o link "Entrar com outra conta" apontando para a mesma rota
+   de início do login com um parâmetro (ex.: ?trocar=1). Quando o parâmetro
+   estiver presente, acrescente ao pedido de autorização prompt=login&max_age=0
+   (OIDC padrão); a Central então encerra a sessão dela e pede usuário e senha
+   de novo. O botão normal continua igual, com entrada direta.
+
 No final, devolva um resumo objetivo com: (a) se já existia integração prévia
 e o que foi completado nela vs. construído do zero; (b) toda checagem de
 autorização que ficou sem permissão correspondente; (c) qualquer coisa que você
