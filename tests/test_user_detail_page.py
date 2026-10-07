@@ -110,3 +110,30 @@ def test_apps_detail_no_longer_edits_identity(admin_client):
     assert r.status_code == 200
     assert "Excluir usuário" not in r.text and "Salvar dados" not in r.text
     assert re.search(r'href="/operadores/\d+"', r.text)
+
+
+def test_edit_with_duplicate_email_is_a_clear_400_not_500(admin_client):
+    from sqlalchemy import select
+
+    from app.database import SessionLocal
+    from app.models import User
+
+    db = SessionLocal()
+    try:
+        a = User(username="dup.a", email="dup.a@x.com", full_name="Dup A")
+        b = User(username="dup.b", email="dup.b@x.com", full_name="Dup B")
+        db.add_all([a, b])
+        db.commit()
+        a_id = a.id
+    finally:
+        db.close()
+    r = admin_client.post(
+        f"/operadores/{a_id}/editar",
+        data={"full_name": "Dup A", "email": "Dup.B@x.com", "is_active": "on"},
+    )
+    assert r.status_code == 400 and "já pertence a outro usuário" in r.text
+    db = SessionLocal()
+    try:
+        assert db.get(User, a_id).email == "dup.a@x.com"
+    finally:
+        db.close()

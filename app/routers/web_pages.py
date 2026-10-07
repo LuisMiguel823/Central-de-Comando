@@ -592,8 +592,17 @@ def operators_update(
     user: User = Depends(require_web_admin),
 ):
     target = db.get(User, user_id) or _404("Operador")
+    email = email.strip().lower()
+    # e-mail é único: sem esta checagem o banco recusa e a tela cai em "Internal Server Error"
+    other = db.scalar(select(User).where(User.email == email, User.id != target.id))
+    if other is not None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"O e-mail {email} já pertence a outro usuário ({other.full_name}, "
+            f"login '{other.username}'). Use essa conta existente em vez de duplicar.",
+        )
     target.full_name = full_name.strip()
-    target.email = email.strip().lower()
+    target.email = email
     if password:
         target.password_hash = hash_password(password)
     target.client_id = int(client_id) if client_id else None
