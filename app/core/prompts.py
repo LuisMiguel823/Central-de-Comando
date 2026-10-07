@@ -59,11 +59,12 @@ DADOS DA INTEGRAÇÃO
    genérico tipo "sistema.editar" que o código não confira de verdade. Não
    invente permissão que não exista no código.
 3. Quem entra por outro método (senha local, Microsoft SSO, gov.br) e não tem
-   lista de permissões da Central fica com NENHUMA permissão de gestão; o
-   acesso de leitura continua. NÃO desligue esses outros logins (acesso de
-   emergência se a Central cair).
-4. O painel técnico do framework (ex.: /admin/ do Django) fica só para
-   superusuário local, como acesso de emergência. Não remova.
+   lista de permissões da Central fica com NENHUMA permissão de gestão (o
+   acesso de leitura continua). Não crie plano B nem rotina de contingência
+   para "a Central cair": se ela cair, todos os sistemas caem juntos, e isso
+   é esperado.
+4. Não mexa no painel técnico do framework (ex.: /admin/ do Django); ele não
+   faz parte desta integração.
 5. Ser administrador da Central NÃO dá nenhum acesso a este sistema: o token só
    traz as permissões concedidas explicitamente a cada pessoa NESTE sistema. Não
    trate "roles", "is_superuser" nem nada vindo da Central como admin local;
