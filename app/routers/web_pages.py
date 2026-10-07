@@ -1087,6 +1087,13 @@ async def apps_add_member(
     form = await request.form()
     wanted = {int(v) for v in form.getlist("permission_id") if str(v).isdigit()}
     perms = [p for p in app.permissions if p.id in wanted]
+    if not perms:
+        # antes isso "dava certo" sem fazer nada e a pessoa não aparecia na lista
+        raise HTTPException(
+            status_code=400,
+            detail="Marque pelo menos uma permissão para dar acesso a esta pessoa. "
+            "Sem permissão não há acesso, e ela não entra na lista do sistema.",
+        )
     for perm in perms:
         perm_service.grant(db, user=target, permission=perm, granted_by=user)
     if perms:

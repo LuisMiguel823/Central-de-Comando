@@ -352,7 +352,7 @@
       </div>
       <div class="grid gap-1.5 sm:grid-cols-2">
         {% for p in app.permissions %}
-        <label class="perm-check" title="{{ p.description or p.code }}"><input type="checkbox" name="permission_id" value="{{ p.id }}" /><span>{{ p.name }}</span></label>
+        <label class="perm-check" title="{{ p.description or p.code }}"><input type="checkbox" name="permission_id" value="{{ p.id }}" checked /><span>{{ p.name }}</span></label>
         {% endfor %}
       </div>
       <div class="mt-2 flex justify-end gap-2">

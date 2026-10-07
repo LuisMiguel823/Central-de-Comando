@@ -255,3 +255,17 @@ def test_central_admin_only_sees_systems_it_was_granted(admin_client, oidc_app):
         assert claims["permissions"] == ["teste.ler"] and claims["roles"] == []
     finally:
         db.close()
+
+
+def test_add_member_without_permission_is_rejected(admin_client, oidc_app):
+    from sqlalchemy import select
+
+    from app.models import User
+
+    db = SessionLocal()
+    try:
+        uid = db.scalar(select(User.id).where(User.is_superuser.is_(True)))
+    finally:
+        db.close()
+    r = admin_client.post(f"/apps/{oidc_app['id']}/usuarios/adicionar", data={"user_id": uid})
+    assert r.status_code == 400 and "pelo menos uma permissão" in r.text
