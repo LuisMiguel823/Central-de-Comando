@@ -16,8 +16,20 @@
         <svg class="sidebar-ico h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 13h8V3H3v10Zm10 8h8V11h-8v10ZM3 21h8v-6H3v6Zm10-18v6h8V3h-8Z" />
         </svg>
-        <span class="sidebar-label">{{ "Dashboard" if user.is_superuser else "Meus sistemas" }}</span>
+        <span class="sidebar-label">{{ "Dashboard" if user.is_superuser else "Módulos" }}</span>
       </a>
+      {% if user.is_superuser %}
+      <a
+        href="/modulos"
+        title="Módulos"
+        class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium {{ 'is-active' if path == '/modulos' }}"
+      >
+        <svg class="sidebar-ico h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2 3 7v10l9 5 9-5V7l-9-5Zm0 10L3 7m9 5 9-5m-9 5v10" />
+        </svg>
+        <span class="sidebar-label">Módulos</span>
+      </a>
+      {% endif %}
     </div>
 
     {% if user.is_superuser %}

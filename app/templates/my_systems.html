@@ -1,14 +1,14 @@
-{% extends "base.html" %} {% block title %}Meus sistemas{% endblock %} {% block heading %}Meus sistemas{% endblock %} {% block
+{% extends "base.html" %} {% block title %}Módulos{% endblock %} {% block heading %}Módulos{% endblock %} {% block
 subheading %}
-<p class="text-sm text-slate-500">Olá, {{ (user.full_name or user.username).split(" ")[0] }} — escolha um sistema para abrir.</p>
+<p class="text-sm text-slate-500">Olá, {{ (user.full_name or user.username).split(" ")[0] }} — escolha um módulo para entrar.</p>
 {% endblock %} {% block content %}
 
 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
   {% for it in items %}
   {% set tag = "a" if it.app.base_url else "div" %}
   <{{ tag }}
-    {% if it.app.base_url %}href="{{ it.app.base_url }}" target="_blank" rel="noopener"{% endif %}
-    class="group block rounded-2xl border border-slate-100 bg-white p-6"
+    {% if it.app.base_url %}href="{{ it.app.base_url }}"{% endif %}
+    class="group block rounded-2xl border border-slate-100 bg-white p-6 {{ 'transition-shadow hover:shadow-lg' if it.app.base_url else 'opacity-70' }}"
   >
     <div class="flex items-center gap-4">
       <span class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 text-base font-bold text-white">
@@ -30,13 +30,15 @@ subheading %}
         <span class="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">{{ it.permissions | length }} permissão(ões)</span>
       </div>
       {% if it.app.base_url %}
-      <span class="text-sm font-semibold text-brand-600 transition-transform group-hover:translate-x-1">Abrir &rarr;</span>
+      <span class="text-sm font-semibold text-brand-600 transition-transform group-hover:translate-x-1">Entrar &rarr;</span>
+      {% else %}
+      <span class="text-xs text-slate-400">Endereço não cadastrado</span>
       {% endif %}
     </div>
   </{{ tag }}>
   {% else %}
   <div class="rounded-2xl border border-dashed border-slate-200 p-10 text-center text-sm text-slate-400 sm:col-span-2 xl:col-span-3">
-    Você ainda não tem acesso a nenhum sistema. Fale com o administrador.
+    Você ainda não tem acesso a nenhum módulo. Fale com o administrador.
   </div>
   {% endfor %}
 </div>

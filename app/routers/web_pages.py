@@ -149,6 +149,19 @@ def _my_systems(request: Request, db: Session, user: User):
 
 
 # --------------------------------------------------------------------------- #
+# Módulos — a Central é a porta de entrada: cada sistema aparece como um módulo
+# para quem tem acesso a ele (admin inclusive: ser admin da Central não dá acesso).
+# --------------------------------------------------------------------------- #
+@router.get("/modulos")
+def modules_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_web_user),
+):
+    return _my_systems(request, db, user)
+
+
+# --------------------------------------------------------------------------- #
 # Dashboard
 # --------------------------------------------------------------------------- #
 @router.get("/")
@@ -869,10 +882,12 @@ def apps_update(
     stack: str = Form(""),
     multi_client: str = Form(""),
     has_local_access: str = Form(""),
+    require_access: str = Form(""),
     db: Session = Depends(get_db),
     user: User = Depends(require_web_admin),
 ):
     app = db.get(Application, app_id) or _404("Aplicação")
+    app.require_access = require_access == "on"
     app.stack = stack if stack in STACK_LABELS else None
     app.multi_client = multi_client == "on"
     app.has_local_access = has_local_access == "on"

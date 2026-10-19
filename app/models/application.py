@@ -43,6 +43,9 @@ class Application(TimestampMixin, Base):
     stack: Mapped[str | None] = mapped_column(String(40))
     multi_client: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     has_local_access: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Módulo com porteiro na Central: só quem tem permissão concedida neste sistema
+    # consegue entrar (o /authorize recusa os demais). Desligado = comportamento antigo.
+    require_access: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Relatório que o próprio sistema devolve ao terminar (POST /api/v1/apps/integration/report)
     integration_report: Mapped[dict | None] = mapped_column(JSON)
     integration_reported_at: Mapped[datetime | None] = mapped_column(DateTime)

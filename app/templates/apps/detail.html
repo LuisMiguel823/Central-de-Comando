@@ -323,6 +323,7 @@
       <div class="sm:col-span-2 grid gap-2">
         {{ f.checkbox("has_local_access", "Já tinha usuários com poderes (importar para a Central)", checked=app.has_local_access) }}
         {{ f.checkbox("multi_client", "Atende vários clientes (client_code)", checked=app.multi_client) }}
+        {{ f.checkbox("require_access", "Só entra quem tem acesso a este módulo na Central", checked=app.require_access) }}
         {{ f.checkbox("is_active", "Sistema ativo", checked=app.is_active) }}
       </div>
       <div class="sm:col-span-2 mt-2 flex justify-end gap-2">

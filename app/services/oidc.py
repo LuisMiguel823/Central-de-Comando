@@ -141,6 +141,7 @@ def discovery_document() -> dict:
         "authorization_endpoint": f"{iss}/oauth/authorize",
         "token_endpoint": f"{iss}/oauth/token",
         "userinfo_endpoint": f"{iss}/oauth/userinfo",
+        "end_session_endpoint": f"{iss}/oauth/logout",
         "jwks_uri": f"{iss}/oauth/jwks.json",
         "response_types_supported": ["code"],
         "grant_types_supported": ["authorization_code", "refresh_token"],

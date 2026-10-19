@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 from datetime import timedelta
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlsplit
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -14,7 +14,8 @@ from app.core import audit
 from app.core.security import generate_token, jwks, utcnow, verify_password
 from app.database import get_db
 from app.models import Application, OAuthAuthorizationCode, OAuthToken, User
-from app.services import oidc
+from app.core.templating import render
+from app.services import oidc, permissions as perm_service
 
 router = APIRouter(tags=["oidc-provider"])
 
@@ -98,6 +99,18 @@ def authorize(
         request.session.clear()
         return RedirectResponse("/login", status_code=302)
 
+    # Porteiro do módulo: sem nenhuma permissão concedida aqui, não entra.
+    if app.require_access and not perm_service.permissions_for(db, user, app):
+        audit.record(
+            db, "oauth.denied", actor=user, target_type="application",
+            target_id=app.id, description=f"Sem acesso ao módulo {app.name}",
+            request=request,
+        )
+        return render(
+            request, "access_denied.html", {"user": user, "app": app},
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+
     code = OAuthAuthorizationCode(
         code=generate_token(32),
         user_id=user.id,
@@ -123,6 +136,44 @@ def authorize(
     if state:
         location += f"&state={quote(state)}"
     return RedirectResponse(location, status_code=status.HTTP_302_FOUND)
+
+
+# --------------------------------------------------------------------------- #
+# /logout (OIDC RP-Initiated Logout): o sistema satélite manda o usuário pra cá
+# ao clicar em "Sair"; a sessão da Central cai e ele volta ao login.
+# --------------------------------------------------------------------------- #
+def _origin(url: str) -> str | None:
+    p = urlsplit(url)
+    return f"{p.scheme}://{p.netloc}".lower() if p.scheme and p.netloc else None
+
+
+def _allowed_logout_target(db: Session, url: str | None) -> bool:
+    """Só devolve o usuário para o endereço de um sistema cadastrado (anti open-redirect)."""
+    target = _origin(url or "")
+    if target is None:
+        return False
+    for app in db.scalars(select(Application).where(Application.is_active.is_(True))).all():
+        known = [app.base_url or "", *app.redirect_uri_list]
+        if target in {_origin(u) for u in known if u}:
+            return True
+    return False
+
+
+@router.get("/oauth/logout")
+@router.post("/oauth/logout")
+def end_session(
+    request: Request,
+    post_logout_redirect_uri: str | None = None,
+    db: Session = Depends(get_db),
+):
+    uid = request.session.get("uid")
+    if uid:
+        user = db.get(User, uid)
+        audit.record(db, "auth.logout", actor=user, description="Logout (via sistema)", request=request)
+    request.session.clear()
+    if _allowed_logout_target(db, post_logout_redirect_uri):
+        return RedirectResponse(post_logout_redirect_uri, status_code=status.HTTP_302_FOUND)
+    return RedirectResponse("/login", status_code=status.HTTP_302_FOUND)
 
 
 # --------------------------------------------------------------------------- #

@@ -35,10 +35,72 @@ def test_regular_operator_sees_only_own_systems_and_no_admin_pages():
 
     home = c.get("/")
     assert home.status_code == 200
-    assert "Meus sistemas" in home.text and "https://sistema-um.exemplo.com" in home.text
+    assert "Módulos" in home.text and "https://sistema-um.exemplo.com" in home.text
     assert "OPX1" in home.text
     # nada de dados globais da Central na home nem no menu
     assert "Usuários ativos" not in home.text and 'href="/operadores"' not in home.text
 
     for path in ("/operadores", "/clientes", "/apps", "/apps/app-1", "/auditoria", "/sobre"):
         assert c.get(path).status_code == 403, path
+
+
+def test_modules_page_and_end_session_logout():
+    db = SessionLocal()
+    try:
+        seeded = db.scalar(select(User).where(User.username == "op.comum")) is not None
+    finally:
+        db.close()
+    if not seeded:  # o banco de teste é compartilhado com o teste acima
+        _seed_operator()
+    c = TestClient(app)
+    c.post("/login", data={"identifier": "op.comum", "password": "senha12345"}, follow_redirects=False)
+
+    mods = c.get("/modulos")
+    assert mods.status_code == 200 and "https://sistema-um.exemplo.com" in mods.text
+
+    # destino não cadastrado nunca é aceito (anti open-redirect): cai no login da Central
+    r = c.get("/oauth/logout?post_logout_redirect_uri=https://malicioso.exemplo.net/x", follow_redirects=False)
+    assert r.status_code == 302 and r.headers["location"] == "/login"
+    assert c.get("/modulos", follow_redirects=False).status_code in (302, 401)
+
+    # destino de um sistema cadastrado é aceito
+    c.post("/login", data={"identifier": "op.comum", "password": "senha12345"}, follow_redirects=False)
+    r = c.get("/oauth/logout?post_logout_redirect_uri=https://sistema-um.exemplo.com/login", follow_redirects=False)
+    assert r.headers["location"] == "https://sistema-um.exemplo.com/login"
+
+
+def test_require_access_gate_blocks_user_without_permission():
+    from urllib.parse import urlencode
+
+    db = SessionLocal()
+    try:
+        if db.scalar(select(User).where(User.username == "op.comum")) is None:
+            _seed_operator()
+        app1 = db.scalar(select(Application).where(Application.slug == "app-1"))
+        cid, redirect = app1.oauth_client_id, app1.redirect_uri_list[0]
+        if db.scalar(select(User).where(User.username == "sem.acesso")) is None:
+            db.add(User(username="sem.acesso", email="sem.acesso@x.com", full_name="Sem Acesso",
+                        password_hash=hash_password("senha12345")))
+        app1.require_access = True
+        db.commit()
+    finally:
+        db.close()
+
+    qs = urlencode({"response_type": "code", "client_id": cid, "redirect_uri": redirect, "state": "s"})
+    try:
+        blocked = TestClient(app)
+        blocked.post("/login", data={"identifier": "sem.acesso", "password": "senha12345"}, follow_redirects=False)
+        r = blocked.get(f"/oauth/authorize?{qs}", follow_redirects=False)
+        assert r.status_code == 403 and "não tem acesso" in r.text
+
+        allowed = TestClient(app)
+        allowed.post("/login", data={"identifier": "op.comum", "password": "senha12345"}, follow_redirects=False)
+        r = allowed.get(f"/oauth/authorize?{qs}", follow_redirects=False)
+        assert r.status_code == 302 and "code=" in r.headers["location"]
+    finally:
+        db = SessionLocal()
+        try:
+            db.scalar(select(Application).where(Application.slug == "app-1")).require_access = False
+            db.commit()
+        finally:
+            db.close()
