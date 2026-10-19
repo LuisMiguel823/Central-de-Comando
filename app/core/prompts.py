@@ -201,6 +201,117 @@ e revalide via /api/v1/introspect só ao expirar ou antes de ação sensível.
 """
 
 
+MODULE_FLOW_PACKAGE = """\
+Atualize o sistema "{NAME}" (JÁ integrado ao APP CENTRAL) para o fluxo de
+MÓDULO: a Central passa a ser a porta de entrada e este sistema vira um módulo
+dela. Esta mensagem é COMPLETA e NÃO traz segredo nenhum (o client_secret que
+o sistema já usa continua valendo; não o troque nem o imprima). Execute tudo;
+só pare e pergunte se houver risco real de alguém perder acesso.
+
+COMO FICA O FLUXO (alvo)
+1. Pessoa abre {SYSTEM_URL} sem sessão -> é levada DIRETO ao login da Central
+   (sem passar por tela local de botões).
+2. Loga na Central, vê o card "{NAME}" em Módulos, clica e entra (a Central já
+   está logada: o /authorize devolve o code sem pedir senha de novo).
+3. Ao clicar em "Sair" neste sistema -> a sessão local cai E o navegador vai
+   para a Central, que encerra a sessão dela e mostra o login.
+
+DADOS
+- client_id (não muda): {CLIENT_ID}
+- Central: {BASE_URL_CENTRAL}
+- Discovery: {BASE_URL_CENTRAL}/.well-known/openid-configuration
+- Logout (end_session_endpoint): {BASE_URL_CENTRAL}/oauth/logout
+  (GET ou POST; NÃO exige id_token_hint; sem post_logout_redirect_uri ele cai no
+  login da Central, que é o desejado)
+- Endereço deste sistema na Central: {SYSTEM_URL}
+  (é o que o card abre; esta URL deve levar ao início do login da Central)
+
+O QUE NÃO MUDAR
+- client_id, client_secret, redirect_uri e o modelo de permissões (claim
+  "permissions") ficam exatamente como estão.
+- Não crie nem remova usuários em massa, não mexa no auto-provisionamento.
+- O painel técnico do framework (ex.: /admin/ do Django) fica fora.
+
+O QUE FAZER (três mudanças pequenas)
+
+A) Login direto na Central
+Ao abrir a tela de login local (ou no guard de rota que hoje leva a ela),
+redirecione automaticamente para a rota que INICIA o login da Central (a mesma
+do botão "Entrar com APP CENTRAL"), quando a Central estiver configurada.
+Anti-loop OBRIGATÓRIO — NÃO redirecione (mostre a tela local com os botões) se:
+  - a URL traz ?erro= / ?error= (falha de login: mostre a mensagem);
+  - a URL traz ?manual=1 (acesso manual por outro método, p.ex. Microsoft/gov.br);
+  - a pessoa saiu há menos de ~60 s (marque a saída no logout: sessionStorage,
+    cookie curto ou parâmetro);
+  - já houve um redirecionamento automático há menos de ~20 s (login "não pegou").
+Enquanto decide, mostre "Redirecionando para o login do APP CENTRAL…" (sem
+piscar a tela de botões). Mantenha "Entrar com outra conta" (?trocar=1 ->
+prompt=login&max_age=0) como já existe.
+
+B) Logout volta ao login da Central
+Depois de limpar a sessão/token local, redirecione o navegador para
+{BASE_URL_CENTRAL}/oauth/logout. Preferível via uma rota do backend que leia o
+endereço da Central da configuração já existente (issuer), em vez de fixar a URL
+no front; se a Central não estiver configurada no ambiente, volte à tela local.
+O logout vale para qualquer origem de login (Central, Microsoft, gov.br): todos
+caem no login da Central. Qualquer tela de "conta sem vínculo/sem acesso" que hoje
+só redireciona para o login local deve passar por este mesmo logout.
+
+C) Usuário desativado não entra
+No callback da Central, se o usuário LOCAL já existir e estiver inativo, recuse
+(volte à tela local com ?erro= e a mensagem "Seu acesso a este sistema está
+desativado. Fale com o administrador."). Vale só para quem já existe.
+
+ATENÇÃO — a Central pode recusar quem não tem acesso
+Quando o dono ligar a opção "Só entra quem tem acesso a este módulo" na Central,
+o /oauth/authorize responde 403 com uma tela da própria Central ("Você não tem
+acesso ao módulo"). Isso acontece ANTES de voltar ao seu callback: não trate nem
+tente contornar. Não precisa de código seu para isso.
+
+COMO TESTAR (descreva no resumo final)
+1. Janela anônima, abra {SYSTEM_URL}: deve ir direto ao login da Central.
+2. Entre; o sistema abre logado. Clique em Sair: deve cair no login da Central.
+3. Abra {SYSTEM_URL}/login?manual=1 (ou o equivalente): mostra a tela local.
+4. Provoque um erro de login (?erro=x): NÃO deve redirecionar em loop.
+
+RELATÓRIO FINAL (obrigatório)
+Use o client_secret que o sistema JÁ tem na variável de ambiente (não o cole
+no chat):
+
+curl -X POST {BASE_URL_CENTRAL}/api/v1/apps/integration/report \\
+  -H "Content-Type: application/json" \\
+  -d '{"client_id": "{CLIENT_ID}", "client_secret": "<do ambiente>",
+       "status": "completed",
+       "stack": "<linguagem/framework>",
+       "login_done": true,
+       "redirect_uri_used": "<a redirect URI que o código realmente envia>",
+       "central_requests": ["o que depende de alguém na Central, se algo"],
+       "notes": "Fluxo módulo: login direto, logout pela Central, usuário inativo bloqueado. O que não teve certeza e não mexeu: ..."}'
+
+"status": "completed", "partial" ou "blocked". Se o ambiente bloquear edições
+(modo automático, aprovação), NÃO contorne: pare, diga qual comando foi
+bloqueado e peça aprovação ao dono. Depois responda no chat com: (a) o que
+mudou, (b) o commit/push (se o dono autorizou), (c) o passo a passo de teste,
+(d) o conteúdo de "central_requests".
+"""
+
+
+def build_module_flow_package(
+    *, name: str, client_id: str, central_url: str, base_url: str = ""
+) -> str:
+    """Mensagem para o dono de um sistema JÁ integrado adotar o fluxo de módulo.
+    Não leva segredo: o sistema já o tem no ambiente."""
+    out = MODULE_FLOW_PACKAGE
+    for key, value in {
+        "{SYSTEM_URL}": base_url.strip() or "(cadastre o endereço do sistema na Central)",
+        "{NAME}": name,
+        "{CLIENT_ID}": client_id,
+        "{BASE_URL_CENTRAL}": central_url.rstrip("/"),
+    }.items():
+        out = out.replace(key, value)
+    return out
+
+
 def build_integration_package(
     *,
     name: str,

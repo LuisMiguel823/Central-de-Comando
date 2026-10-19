@@ -79,6 +79,33 @@
   </div>
 </div>
 
+<!-- ============ Fluxo de módulo (sistema já integrado) ============ -->
+{% if user.is_superuser %}
+<details class="fold mb-6">
+  <summary>
+    <span class="fold-title">Fluxo de módulo (entrar pela Central)</span>
+    <span class="ml-2 text-xs font-normal text-slate-400">{{ "porteiro ligado" if app.require_access else "porteiro desligado" }}</span>
+  </summary>
+  <div class="fold-body text-sm text-slate-600">
+    <p>
+      Para um sistema que <b>já está integrado</b> passar a ser módulo: abrir a URL dele vai direto ao login da Central,
+      o card em Módulos entra sem pedir senha e "Sair" volta ao login da Central. Cole a mensagem abaixo na IA ou no
+      dev do sistema. Ela <b>não traz segredo</b> (o sistema já tem o dele).
+    </p>
+    <ol class="mt-2 list-decimal space-y-0.5 pl-5 text-xs text-slate-500">
+      <li>Confira que o endereço do sistema está cadastrado (Editar) e que todo mundo que usa tem permissão concedida aqui.</li>
+      <li>Mande a mensagem e espere o relatório do sistema (aparece em "Integração").</li>
+      <li>Com o sistema publicado, marque "Só entra quem tem acesso a este módulo" em Editar.</li>
+    </ol>
+    <textarea id="flow-package" readonly rows="8"
+      class="mt-3 w-full resize-y rounded-lg border border-slate-200 bg-white/70 px-3 py-2 font-mono text-[11px] text-slate-700 outline-none">{{ flow_package }}</textarea>
+    <div class="mt-2 flex justify-end">
+      <button data-copy-target="flow-package" class="btn-primary rounded-lg px-4 py-2 text-sm font-semibold">Copiar mensagem</button>
+    </div>
+  </div>
+</details>
+{% endif %}
+
 <!-- ============ Integração (checklist automático + relatório do sistema) ============ -->
 {% set pending = checklist | rejectattr("ok", "none") | rejectattr("ok") | list %}
 {% set open_requests = (report.central_requests if report else []) %}

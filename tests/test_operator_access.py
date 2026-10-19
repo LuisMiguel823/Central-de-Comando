@@ -104,3 +104,10 @@ def test_require_access_gate_blocks_user_without_permission():
             db.commit()
         finally:
             db.close()
+
+
+def test_module_flow_package_on_app_page_has_no_secret(admin_client):
+    r = admin_client.get("/apps/app-1")
+    assert r.status_code == 200
+    assert "Fluxo de módulo" in r.text and "/oauth/logout" in r.text
+    assert "client_secret" in r.text and "&lt;do ambiente&gt;" in r.text  # placeholder, nunca o segredo

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.config import settings
 from app.core import audit
-from app.core.prompts import STACK_LABELS, build_integration_package
+from app.core.prompts import STACK_LABELS, build_integration_package, build_module_flow_package
 from app.core.deps import require_web_admin, require_web_user
 from app.core.security import (
     generate_client_id,
@@ -1224,6 +1224,12 @@ def app_detail(
             "granted_count": granted_count,
             "new_secret": new_secret,
             "package": package,
+            "flow_package": build_module_flow_package(
+                name=app.name,
+                client_id=app.oauth_client_id,
+                central_url=settings.base_url,
+                base_url=app.base_url or "",
+            ),
             "checklist": checklist,
             "report": report,
             "stack_options": STACK_OPTIONS,
